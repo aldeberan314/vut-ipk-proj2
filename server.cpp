@@ -4,8 +4,8 @@
 #include "server.h"
 #include "error.h"
 
-#define PRINT(x) std::cout << x << std::endl
-#define PRINT2(x, y) std::cout << x << " " << y << std::endl
+
+
 
 sftpServer::sftpServer() {
     gethostname(m_hostname, MAX_HOSTNAME_LEN);
@@ -85,14 +85,9 @@ void sftpServer::closeConnection() {
 
 void sftpServer::start_conversation() {
     int numbytes;
-    char* ptr = m_buffer;
-    *ptr = '+';
-    ptr++;
-    memcpy(ptr, m_hostname, strlen(m_hostname));
-    ptr += strlen(m_hostname);
-    memcpy(ptr, " SFTP SERVICE", 13);
-    send(m_socket, m_buffer, strlen(m_buffer) + 13, 0);
-    memset(m_buffer, 0, BUFFER_SIZE);
+    std::string greeting("+" + std::string(m_hostname) + " SFTP SERVICE");
+    send(m_socket, greeting.data(), greeting.length(), 0); // send greeting message
+
     while(true) {
         //recv
         memset(m_buffer, 0, BUFFER_SIZE);
@@ -103,14 +98,67 @@ void sftpServer::start_conversation() {
         if(!numbytes) { // connection closed by remote peer
             break;
         }
-        PRINT2(numbytes, m_buffer);
-        send(m_socket, "[SERVER] answer from server...", 30, 0);
-
-
         //parse query
+        parse_query();
 
         //respond
+        send(m_socket, "[SERVER] answer from server...", 30, 0);
     }
 
     closeConnection();
+}
+
+void sftpServer::parse_query() {
+    std::string query(m_buffer);
+    const char delimiter = ' ';
+    tokenize(query, delimiter, m_tquery);
+
+    //USER ! ACCT ! PASS ! TYPE ! LIST ! CDIR ! KILL ! NAME ! DONE ! RETR ! STOR
+
+    switch (hash_string(m_tquery.front())) {
+        case USER:
+            PRINT("USER query");
+            break;
+        case ACCT:
+            break;
+        case PASS:
+            break;
+        case TYPE:
+            break;
+        case LIST:
+            break;
+        case CDIR:
+            break;
+        case KILL:
+            break;
+        case NAME:
+            break;
+        case DONE:
+            break;
+        case RETR:
+            break;
+        case STOR:
+            break;
+        default:
+            PRINT("[SERVER] Unknown query");
+            break;
+    }
+
+
+    m_tquery.clear();
+    //for(auto token : m_tquery) PRINT(token);
+
+}
+
+void sftpServer::tokenize(std::string const &str, const char delim,
+              std::vector<std::string> &out)
+{
+    size_t start;
+    size_t end = 0;
+
+    while ((start = str.find_first_not_of(delim, end)) != std::string::npos)
+    {
+        end = str.find(delim, start);
+        out.push_back(str.substr(start, end - start));
+    }
 }

@@ -15,8 +15,10 @@
 #include <csignal>
 
 #include <pcap.h>
+#include <vector>
 
 #include "error.h"
+#include "utils.h"
 
 
 #ifndef SFTP_SERVER_H
@@ -35,6 +37,9 @@ class sftpServer {
     char m_ipaddr[INET6_ADDRSTRLEN];
     char m_hostname[MAX_HOSTNAME_LEN];
     char m_buffer[BUFFER_SIZE];
+    std::vector<std::string> m_tquery;
+
+
 public:
     sftpServer();
     int bind_to(addrinfo *ptr, int &yes,  addrinfo *servinfo);
@@ -44,6 +49,11 @@ public:
     void closeConnection();
 
     void start_conversation();
+
+    void parse_query();
+
+    void tokenize(std::string const &str, const char delim,
+                  std::vector<std::string> &out);
 
 
 };

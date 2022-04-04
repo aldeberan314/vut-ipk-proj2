@@ -4,7 +4,7 @@
 #include "argparser.h"
 #include "server.h"
 
-#define PRINT(x) std::cout << x << std::endl
+
 #define SFTP_PORT 115
 
 
@@ -13,6 +13,5 @@ int main(int argc, char ** argv) {
     auto server = sftpServer();
     parser.parse();
     server.start();
-
     return 0;
 }

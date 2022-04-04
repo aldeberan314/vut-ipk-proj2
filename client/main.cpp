@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
         PRINT("recv error, exiting...");
         exit(0);
     }
+    PRINT(buffer);
     while(true) {
 
         buffer[numbytes] = '\0';
