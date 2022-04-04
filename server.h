@@ -16,6 +16,7 @@
 
 #include <pcap.h>
 #include <vector>
+#include <fstream>
 
 #include "error.h"
 #include "utils.h"
@@ -38,6 +39,10 @@ class sftpServer {
     char m_hostname[MAX_HOSTNAME_LEN];
     char m_buffer[BUFFER_SIZE];
     std::vector<std::string> m_tquery;
+    bool m_logged_in = false;
+    bool m_userid_sent = false;
+    std::string m_userid;
+    std::string m_password;
 
 
 public:
@@ -52,9 +57,12 @@ public:
 
     void parse_query();
 
-    void tokenize(std::string const &str, const char delim,
-                  std::vector<std::string> &out);
+    //void tokenize(std::string const &str, const char delim, std::vector<std::string> &out);
+    void cmd_user();
 
+    void load_buffer(std::string msg);
+
+    bool is_valid_user(std::string userid);
 
 };
 

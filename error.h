@@ -7,6 +7,9 @@
 #ifndef SFTP_ERROR_H
 #define SFTP_ERROR_H
 
+#define CONNECTION_ERROR 1
+#define FILE_IO_ERROR 2
+
 
 void error_call(int errcode, std::string errmsg, int lerrcode=0);
 

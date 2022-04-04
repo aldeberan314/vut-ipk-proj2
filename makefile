@@ -23,6 +23,9 @@ utils.o: utils.cpp
 main.o: main.cpp
 	$(CC) -c main.cpp
 
+run:
+	./sftp -i en0 -p 117 -u cesta -f cestam
+
 clean:
 	rm -f sftp *.o
 

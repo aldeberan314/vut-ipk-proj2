@@ -87,10 +87,12 @@ int main(int argc, char *argv[]) {
         send(sock, buffer, user_input.length(), 0);
         memset(buffer, 0, MAX_DATA_SIZE);
 
+        // read from sercer
         if((numbytes = recv(sock, buffer, MAX_DATA_SIZE-1, 0)) == -1) {
             PRINT("recv error, exiting...");
             exit(0);
         }
+        // print server msg
         PRINT(buffer);
         memset(buffer, 0, MAX_DATA_SIZE);
 
