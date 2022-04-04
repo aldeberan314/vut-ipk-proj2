@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
     addrinfo hints, *servinfo, *p;
     int gai_r;
     char s[INET6_ADDRSTRLEN];
+    std::string user_input;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_addr = AF_UNSPEC;
@@ -68,14 +69,33 @@ int main(int argc, char *argv[]) {
 
     freeaddrinfo(servinfo);
 
+
     if((numbytes = recv(sock, buffer, MAX_DATA_SIZE-1, 0)) == -1) {
         PRINT("recv error, exiting...");
         exit(0);
     }
+    while(true) {
 
-    buffer[numbytes] = '\0';
+        buffer[numbytes] = '\0';
+        memset(buffer, 0, MAX_DATA_SIZE);
+        std::getline(std::cin, user_input);
+        if(user_input == "!close") {
+            break;
+        }
+        memcpy(buffer, user_input.data(), user_input.length());
+        send(sock, buffer, user_input.length(), 0);
+        memset(buffer, 0, MAX_DATA_SIZE);
 
-    printf("client: received '%s'\n",buffer);
+        if((numbytes = recv(sock, buffer, MAX_DATA_SIZE-1, 0)) == -1) {
+            PRINT("recv error, exiting...");
+            exit(0);
+        }
+        PRINT(buffer);
+        memset(buffer, 0, MAX_DATA_SIZE);
+
+
+    }
+
 
     close(sock);
 

@@ -14,6 +14,5 @@ int main(int argc, char ** argv) {
     parser.parse();
     server.start();
 
-
     return 0;
 }

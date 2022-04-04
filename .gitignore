@@ -1,4 +1,6 @@
 .DS_Store
+sftp
 client/.DS_Store
 .idea
 client/.idea
+client/client

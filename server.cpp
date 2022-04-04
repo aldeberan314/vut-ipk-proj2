@@ -10,6 +10,7 @@
 sftpServer::sftpServer() {
     gethostname(m_hostname, MAX_HOSTNAME_LEN);
     memset(&m_hints, 0, sizeof(m_hints));
+    memset(&m_buffer, 0, BUFFER_SIZE);
     m_hints.ai_family = AF_UNSPEC;
     m_hints.ai_socktype = SOCK_STREAM;
     m_hints.ai_flags = AI_PASSIVE;
@@ -48,6 +49,7 @@ void sftpServer::start() {
     PRINT("[SERVER] Starting...");
     int sock; // socket file descriptors
     int yes = 1;
+    int numbytes;
     socklen_t sin_size = sizeof(sockaddr_storage); // for accept
     addrinfo *servinfo, *p; // pointers to addrinfo
 
@@ -74,7 +76,7 @@ void sftpServer::start() {
     inet_ntop(m_client_addr.ss_family, get_in_addr((sockaddr*)&m_client_addr), m_ipaddr, sizeof(m_ipaddr));
     PRINT2("server: got connection from", m_ipaddr);
 
-    send(m_socket, "AHOJ MANKO!", 11, 0);
+    start_conversation();
 }
 
 void sftpServer::closeConnection() {
@@ -82,12 +84,33 @@ void sftpServer::closeConnection() {
 }
 
 void sftpServer::start_conversation() {
+    int numbytes;
+    char* ptr = m_buffer;
+    *ptr = '+';
+    ptr++;
+    memcpy(ptr, m_hostname, strlen(m_hostname));
+    ptr += strlen(m_hostname);
+    memcpy(ptr, " SFTP SERVICE", 13);
+    send(m_socket, m_buffer, strlen(m_buffer) + 13, 0);
+    memset(m_buffer, 0, BUFFER_SIZE);
     while(true) {
         //recv
+        memset(m_buffer, 0, BUFFER_SIZE);
+        if((numbytes = recv(m_socket, m_buffer, BUFFER_SIZE-1, 0)) == -1) {
+            PRINT("recv error, exiting...");
+            exit(0);
+        }
+        if(!numbytes) { // connection closed by remote peer
+            break;
+        }
+        PRINT2(numbytes, m_buffer);
+        send(m_socket, "[SERVER] answer from server...", 30, 0);
+
 
         //parse query
 
         //respond
-        break;
     }
+
+    closeConnection();
 }

@@ -25,6 +25,7 @@
 #define PORT "5060"
 #define BACKLOG 10
 #define MAX_HOSTNAME_LEN 254
+#define BUFFER_SIZE 500
 
 
 class sftpServer {
@@ -33,6 +34,7 @@ class sftpServer {
     sockaddr_storage m_client_addr;
     char m_ipaddr[INET6_ADDRSTRLEN];
     char m_hostname[MAX_HOSTNAME_LEN];
+    char m_buffer[BUFFER_SIZE];
 public:
     sftpServer();
     int bind_to(addrinfo *ptr, int &yes,  addrinfo *servinfo);
