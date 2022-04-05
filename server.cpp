@@ -15,6 +15,7 @@ sftpServer::sftpServer() {
     m_hints.ai_socktype = SOCK_STREAM;
     m_hints.ai_flags = AI_PASSIVE;
     m_wdir = fs::current_path();
+    m_stream_type = BINARY;
 }
 
 void *sftpServer::get_in_addr(sockaddr *sa) {
@@ -130,6 +131,7 @@ void sftpServer::parse_query() {
             cmd_pass();
             break;
         case TYPE:
+            cmd_type();
             break;
         case LIST:
             cmd_list();
@@ -198,6 +200,27 @@ void sftpServer::cmd_pass() {
         return;
     }
     load_buffer("-Wrong password, try again");
+}
+
+//todo logged in
+void sftpServer::cmd_type() {
+    if(!is_valid_count(2, "-Invalid query, usage: \"TYPE { A | B | C }\"")) return;
+    if(m_tquery[1] == "A") {
+        m_stream_type = ASCII;
+        load_buffer("+Using Ascii mode");
+        return;
+    }
+    if(m_tquery[1] == "B") {
+        m_stream_type = BINARY;
+        load_buffer("+Using Binary mode");
+        return;
+    }
+    if(m_tquery[1] == "C") {
+        m_stream_type = CONTINUOUS;
+        load_buffer("+Using Continuous mode");
+        return;
+    }
+    load_buffer("-Type not valid");
 }
 
 // TODO clean up a bit

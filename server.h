@@ -49,6 +49,7 @@ class sftpServer {
     std::string m_userid;
     std::string m_password;
     fs::path m_wdir;
+    stream_type m_stream_type;
 
 
 public:
@@ -68,6 +69,8 @@ public:
     void cmd_acct();
 
     void cmd_pass();
+
+    void cmd_type();
 
     void cmd_list();
 

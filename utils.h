@@ -12,6 +12,13 @@
 #define PRINT(x) std::cout << x << std::endl
 #define PRINT2(x, y) std::cout << x << " " << y << std::endl
 
+enum stream_type {
+    ASCII,
+    BINARY,
+    CONTINUOUS
+};
+
+
 enum command_code {
     USER,
     ACCT,
