@@ -7,7 +7,6 @@
 
 
 command_code hash_string(std::string &string) {
-    //std::cout << "TO BE HASHED STRING: "<< string << "\n";
     if (string == "USER") return USER;
     if (string == "ACCT") return ACCT;
     if (string == "PASS") return PASS;
@@ -19,6 +18,7 @@ command_code hash_string(std::string &string) {
     if (string == "DONE") return DONE;
     if (string == "RETR") return RETR;
     if (string == "STOR") return STOR;
+    if (string == "TOBE") return TOBE;
     return ERROR;
 }
 

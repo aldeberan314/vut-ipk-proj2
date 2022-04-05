@@ -135,8 +135,10 @@ void sftpServer::parse_query() {
             cmd_list();
             break;
         case CDIR:
+            cmd_cdir();
             break;
         case KILL:
+            cmd_kill();
             break;
         case NAME:
             break;
@@ -159,10 +161,7 @@ void sftpServer::parse_query() {
 
 
 void sftpServer::cmd_user() {
-    if(m_tquery.size() != 2) { // bad argument cnt
-        load_buffer("-Invalid user-id, try again");
-        return;
-    }
+    if(!is_valid_count(2,"-Invalid query, usage: \"USER <userid>\"")) return;
     auto user_id = m_tquery[1];
     if(is_valid_user(user_id)) { // user is valid
         load_buffer("+" + m_userid + " valid, send account and password");
@@ -173,10 +172,7 @@ void sftpServer::cmd_user() {
 }
 
 void sftpServer::cmd_acct() {
-    if(m_tquery.size() != 2) { // bad argument cnt
-        load_buffer("-Invalid query, usage: \"ACCT <account>\"");
-        return;
-    }
+    if(!is_valid_count(2,"-Invalid query, usage: \"ACCT <account>\"")) return;
     if(m_userid == m_tquery[1]) { // account is valid
         load_buffer("+Account valid, send password");
         m_acc_sent = true;
@@ -189,10 +185,7 @@ void sftpServer::cmd_acct() {
 // mozno zakazat posielanie dalsieho hesla ked uz sme logged in? napr "+Already logged in"
 // TODO pri prikazoch kontrolovat ci je user logged in, nejaku fciu si na to napisat
 void sftpServer::cmd_pass() {
-    if(m_tquery.size() != 2) { // check number of args
-        load_buffer("-Invalid query, usage: \"PASS <password>\"");
-        return;
-    }
+    if(!is_valid_count(2,"-Invalid query, usage: \"PASS <password>\"")) return;
     if(!m_userid_sent) { // userid was not providing but already sending password
         load_buffer("-First send username");
         return;
@@ -212,10 +205,9 @@ void sftpServer::cmd_list() {
     bool verbose = false;
     fs::path path = m_wdir;
     std::string reply;
-    if(m_tquery.size() < 2 || m_tquery.size() > 3) { // invalid arg count
-        load_buffer("-Invalid query, usage: \"LIST { F | V } directory-path\"");
-        return;
-    }
+
+    if(!is_valid_count(2,"-Invalid query, usage: \"LIST { F | V } directory-path\"", 3)) return;
+
     if(m_tquery[1] == "V") verbose = true;
     if(!verbose && m_tquery[1] != "F") { // invalid arg
         load_buffer("-Invalid query, usage: \"LIST { F | V } directory-path\"");
@@ -243,6 +235,47 @@ void sftpServer::cmd_list() {
     load_buffer(reply);
 }
 
+void sftpServer::cmd_cdir() {
+    if(m_tquery.size() != 2 ) { // invalid arg count
+        load_buffer("-Invalid query, usage: \"CDIR directory-path\"");
+        return;
+    }
+    fs::path path(m_tquery[1]);
+    PRINT(path.string());
+    if(!fs::exists(path)) {
+        load_buffer("-Can't connect to directory because: does not exist");
+        return;
+    }
+    if(!fs::is_directory(path)) {
+        load_buffer("-Can't connect to directory because: is not directory");
+        return;
+    }
+    // TODO handle user not logged in, dostudovat, ako su tieto acct a pass pri tomto prikaze( a aj inych ) v RFCcku myslene
+    //if(!m_logged_in) {
+    //    load_buffer("+Directory ok, send account/password");
+    //    return;
+    //}
+    m_wdir = fs::absolute(path);
+    load_buffer("+Changed directory to " + m_wdir.string());
+}
+
+// TODO must be logged in first
+void sftpServer::cmd_kill() {
+    if(!is_valid_count(2,"-Invalid query, usage: \"KILL <file_spec>\"")) return;
+    fs::path file_spec(m_tquery[1]);
+    if(!m_logged_in) {
+        load_buffer("-You must log in first");
+        return;
+    }
+    /*
+    if(fs::remove(file_spec)) {
+        load_buffer("+" + file_spec.string() + " deleted");
+        return;
+    }
+    load_buffer("-Not deleted");
+     */
+    load_buffer("-Command unavailable during debugging, SAFETY FIRST!");
+}
 
 
 
@@ -258,7 +291,21 @@ void sftpServer::cmd_list() {
 
 
 
-
+bool sftpServer::is_valid_count(int cnt, std::string msg, int upto) {
+    int len = m_tquery.size();
+    if(upto) {
+        if(len < cnt || len > upto) {
+            load_buffer(msg);
+            return false;
+        }
+        return true;
+    }
+    if(len != cnt) {
+        load_buffer(msg);
+        return false;
+    }
+    return true;
+}
 
 void sftpServer::load_buffer(std::string msg) {
     memcpy(m_buffer, msg.data(), msg.size());

@@ -24,6 +24,7 @@ enum command_code {
     DONE,
     RETR,
     STOR,
+    TOBE,
     ERROR
 };
 

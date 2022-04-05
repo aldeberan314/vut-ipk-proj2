@@ -71,9 +71,17 @@ public:
 
     void cmd_list();
 
+    void cmd_cdir();
+
+    void cmd_kill();
+
+
     void load_buffer(std::string msg);
 
     bool is_valid_user(std::string userid);
+
+    bool is_valid_count(int cnt, std::string msg, int upto = 0);
+
 
 };
 
