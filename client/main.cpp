@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
         buffer[numbytes] = '\0';
         memset(buffer, 0, MAX_DATA_SIZE);
         std::getline(std::cin, user_input);
-        if(user_input == "!close") {
+        if(user_input == "DONE") {
             break;
         }
         memcpy(buffer, user_input.data(), user_input.length());

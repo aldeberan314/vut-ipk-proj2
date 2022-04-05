@@ -14,5 +14,6 @@ int main(int argc, char ** argv) {
     auto server = sftpServer();
     parser.parse();
     server.start();
+
     return 0;
 }

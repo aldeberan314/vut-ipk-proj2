@@ -46,9 +46,12 @@ class sftpServer {
     bool m_logged_in = false;
     bool m_acc_sent = false;
     bool m_userid_sent = false;
+    bool m_NAME = false;
+    bool m_done = false;
     std::string m_userid;
     std::string m_password;
     fs::path m_wdir;
+    fs::path m_path_to_be_renamed;
     stream_type m_stream_type;
 
 
@@ -58,7 +61,7 @@ public:
     void *get_in_addr(struct sockaddr *sa);
     void start();
 
-    void closeConnection();
+    void close_connection();
 
     void start_conversation();
 
@@ -78,6 +81,17 @@ public:
 
     void cmd_kill();
 
+    void cmd_name();
+
+    void cmd_tobe();
+
+    void cmd_done();
+
+
+
+    void check_tobe();
+
+    int receive();
 
     void load_buffer(std::string msg);
 

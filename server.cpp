@@ -81,7 +81,7 @@ void sftpServer::start() {
     start_conversation();
 }
 
-void sftpServer::closeConnection() {
+void sftpServer::close_connection() {
     close(m_socket);
 }
 
@@ -93,11 +93,7 @@ void sftpServer::start_conversation() {
 
     while(true) {
         //recv
-        memset(m_buffer, 0, BUFFER_SIZE); // clear buffer for query
-        if((numbytes = recv(m_socket, m_buffer, BUFFER_SIZE-1, 0)) == -1) {
-            PRINT("recv error, exiting...");
-            exit(0);
-        }
+        numbytes = receive();
         if(!numbytes) { // connection closed by remote peer
             break;
         }
@@ -108,9 +104,10 @@ void sftpServer::start_conversation() {
         //PRINT2(strlen(m_buffer), m_buffer);
         PRINT(m_buffer);
         send(m_socket, m_buffer, strlen(m_buffer), 0);
+        if(m_done) break;
     }
 
-    closeConnection();
+    close_connection();
 }
 
 void sftpServer::parse_query() {
@@ -118,7 +115,7 @@ void sftpServer::parse_query() {
     memset(m_buffer, 0, BUFFER_SIZE); // clear buffer for reply
     const char delimiter = ' ';
     tokenize(query, delimiter, m_tquery);
-
+    check_tobe();
 
     switch (hash_string(m_tquery.front())) {
         case USER:
@@ -143,15 +140,21 @@ void sftpServer::parse_query() {
             cmd_kill();
             break;
         case NAME:
+            cmd_name();
             break;
         case DONE:
+            cmd_done();
             break;
         case RETR:
             break;
         case STOR:
             break;
+        case TOBE:
+            cmd_tobe();
+            break;
+        case ERROR:
         default:
-            load_buffer("-Unknown query");
+            load_buffer("-Invalid query");
             break;
     }
     m_tquery.clear();
@@ -264,6 +267,14 @@ void sftpServer::cmd_cdir() {
         return;
     }
     fs::path path(m_tquery[1]);
+    if(path.is_relative()) { // user passed relative path
+        if(path.string() == "..") { // user passed ..
+            path = m_wdir.parent_path();
+        } else {
+            path = m_wdir / path;
+        }
+    }
+    get_rid_of_parents(path);
     PRINT(path.string());
     if(!fs::exists(path)) {
         load_buffer("-Can't connect to directory because: does not exist");
@@ -300,19 +311,52 @@ void sftpServer::cmd_kill() {
     load_buffer("-Command unavailable during debugging, SAFETY FIRST!");
 }
 
+// TODO toto je nebezpecne - neni nijak osetrene aky subor/folder sa bude menit, može vsetko dojebat
+void sftpServer::cmd_name() {
+    if(!is_valid_count(2, "-Invalid query, usage: \"NAME old-file-spec\"")) return;
+    fs::path path(m_tquery[1]);
+    if(!fs::exists(path)) {
+        load_buffer("-Can't find " + path.string());
+        return;
+    }
+    m_path_to_be_renamed = path;
+    m_NAME = true;
+    load_buffer("+File exists");
+}
+
+void sftpServer::cmd_tobe() {
+    if(!is_valid_count(2, "-Invalid query, usage: \"TOBE new-file-spec\"")) return;
+    fs::path new_name(m_tquery[1]);
+
+    fs::path path_to_file = m_path_to_be_renamed.parent_path();
+    PRINT2(m_path_to_be_renamed.string(), new_name.string());
+    fs::rename(m_path_to_be_renamed, path_to_file/new_name);
+    load_buffer( "+" + m_path_to_be_renamed.string() + " renamed to " + new_name.string());
+}
+
+void sftpServer::cmd_done() {
+    load_buffer("+OK, bye!");
+    m_done = true;
+}
 
 
 
 
+void sftpServer::check_tobe() {
+    if(m_NAME) {
+        if(m_tquery.front() != "TOBE") m_NAME = false;
+    }
+}
 
-
-
-
-
-
-
-
-
+int sftpServer::receive() {
+    int numbytes;
+    memset(m_buffer, 0, BUFFER_SIZE); // clear buffer for query
+    if((numbytes = recv(m_socket, m_buffer, BUFFER_SIZE-1, 0)) == -1) {
+        PRINT("recv error, exiting...");
+        exit(0);
+    }
+    return numbytes;
+}
 
 bool sftpServer::is_valid_count(int cnt, std::string msg, int upto) {
     int len = m_tquery.size();

@@ -34,6 +34,14 @@ void tokenize(std::string const &str, const char delim, std::vector<std::string>
     }
 }
 
+void get_rid_of_parents(std::filesystem::path &path) {
+    std::string res;
+    std::regex regex("([^\\/]*\\/\\.\\.)(\\/|$)");
+    res = regex_replace(path.string(), regex, "");
+    PRINT(res);
+    path = res;
+}
+
 bool load_file(std::vector<std::string> &outvec, std::string fileName) {
     std::ifstream in("userpass.txt");
     // Check if object is valid
