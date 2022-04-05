@@ -10,6 +10,7 @@ command_code hash_string(std::string &string) {
     //std::cout << "TO BE HASHED STRING: "<< string << "\n";
     if (string == "USER") return USER;
     if (string == "ACCT") return ACCT;
+    if (string == "PASS") return PASS;
     if (string == "TYPE") return TYPE;
     if (string == "LIST") return LIST;
     if (string == "CDIR") return CDIR;
@@ -51,5 +52,12 @@ bool load_file(std::vector<std::string> &outvec, std::string fileName) {
     in.close();
     return true;
 }
-
+// src: https://en.cppreference.com/w/cpp/filesystem/file_time_type
+/*
+std::string time_to_string(std::filesystem::file_time_type const& ftime) {
+    std::time_t cftime = std::chrono::system_clock::to_time_t(std::chrono::file_clock::to_sys(ftime));
+    return std::asctime(std::localtime(&cftime));
+    std::chrono::
+}
+*/
 

@@ -17,6 +17,7 @@
 #include <pcap.h>
 #include <vector>
 #include <fstream>
+#include <filesystem>
 
 #include "error.h"
 #include "utils.h"
@@ -31,18 +32,23 @@
 #define BUFFER_SIZE 500
 
 
+namespace fs = std::filesystem;
+
+
 class sftpServer {
     int m_socket;
     addrinfo m_hints;
     sockaddr_storage m_client_addr;
+    std::vector<std::string> m_tquery;
     char m_ipaddr[INET6_ADDRSTRLEN];
     char m_hostname[MAX_HOSTNAME_LEN];
     char m_buffer[BUFFER_SIZE];
-    std::vector<std::string> m_tquery;
     bool m_logged_in = false;
+    bool m_acc_sent = false;
     bool m_userid_sent = false;
     std::string m_userid;
     std::string m_password;
+    fs::path m_wdir;
 
 
 public:
@@ -57,8 +63,13 @@ public:
 
     void parse_query();
 
-    //void tokenize(std::string const &str, const char delim, std::vector<std::string> &out);
     void cmd_user();
+
+    void cmd_acct();
+
+    void cmd_pass();
+
+    void cmd_list();
 
     void load_buffer(std::string msg);
 

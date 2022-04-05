@@ -1,4 +1,4 @@
-CC=g++
+CC=g++ -std=c++17
 LBS=-lpcap
 OBJS=argparser.o server.o error.o utils.o main.o
 APPNAME=sftp

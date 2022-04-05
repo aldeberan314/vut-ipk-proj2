@@ -14,6 +14,7 @@ sftpServer::sftpServer() {
     m_hints.ai_family = AF_UNSPEC;
     m_hints.ai_socktype = SOCK_STREAM;
     m_hints.ai_flags = AI_PASSIVE;
+    m_wdir = fs::current_path();
 }
 
 void *sftpServer::get_in_addr(sockaddr *sa) {
@@ -91,7 +92,7 @@ void sftpServer::start_conversation() {
 
     while(true) {
         //recv
-        memset(m_buffer, 0, BUFFER_SIZE);
+        memset(m_buffer, 0, BUFFER_SIZE); // clear buffer for query
         if((numbytes = recv(m_socket, m_buffer, BUFFER_SIZE-1, 0)) == -1) {
             PRINT("recv error, exiting...");
             exit(0);
@@ -103,6 +104,7 @@ void sftpServer::start_conversation() {
         parse_query();
 
         //respond
+        //PRINT2(strlen(m_buffer), m_buffer);
         PRINT(m_buffer);
         send(m_socket, m_buffer, strlen(m_buffer), 0);
     }
@@ -112,24 +114,25 @@ void sftpServer::start_conversation() {
 
 void sftpServer::parse_query() {
     std::string query(m_buffer);
-    memset(m_buffer, 0, BUFFER_SIZE);
+    memset(m_buffer, 0, BUFFER_SIZE); // clear buffer for reply
     const char delimiter = ' ';
     tokenize(query, delimiter, m_tquery);
 
-    //USER ! ACCT ! PASS ! TYPE ! LIST ! CDIR ! KILL ! NAME ! DONE ! RETR ! STOR
 
     switch (hash_string(m_tquery.front())) {
         case USER:
-            PRINT("USER query");
             cmd_user();
             break;
         case ACCT:
+            cmd_acct();
             break;
         case PASS:
+            cmd_pass();
             break;
         case TYPE:
             break;
         case LIST:
+            cmd_list();
             break;
         case CDIR:
             break;
@@ -144,45 +147,136 @@ void sftpServer::parse_query() {
         case STOR:
             break;
         default:
-            PRINT("[SERVER] Unknown query");
+            load_buffer("-Unknown query");
             break;
     }
-
     m_tquery.clear();
 }
 
 
+
+
+
+
 void sftpServer::cmd_user() {
-    if(m_tquery.size() != 2) {
+    if(m_tquery.size() != 2) { // bad argument cnt
         load_buffer("-Invalid user-id, try again");
         return;
     }
     auto user_id = m_tquery[1];
-    if(is_valid_user(user_id)) {
-        load_buffer("+User-id valid, send password");
+    if(is_valid_user(user_id)) { // user is valid
+        load_buffer("+" + m_userid + " valid, send account and password");
+        m_userid_sent = true;
         return;
     }
-    load_buffer("-Invalid user-id, try again");
+    load_buffer("-Invalid user-id, try again"); // self-explanatory
 }
+
+void sftpServer::cmd_acct() {
+    if(m_tquery.size() != 2) { // bad argument cnt
+        load_buffer("-Invalid query, usage: \"ACCT <account>\"");
+        return;
+    }
+    if(m_userid == m_tquery[1]) { // account is valid
+        load_buffer("+Account valid, send password");
+        m_acc_sent = true;
+        return;
+    }
+    load_buffer("-Invalid account, try again"); // self-explanatory
+}
+
+// TODO - preskumat postupnost prikazov USER - PASS - ACCT - PASS a najst riesenie ktore dava zmysel. Momentalne nedava vypisok zmysel, pretoze po pyta heslo znovu
+// mozno zakazat posielanie dalsieho hesla ked uz sme logged in? napr "+Already logged in"
+// TODO pri prikazoch kontrolovat ci je user logged in, nejaku fciu si na to napisat
+void sftpServer::cmd_pass() {
+    if(m_tquery.size() != 2) { // check number of args
+        load_buffer("-Invalid query, usage: \"PASS <password>\"");
+        return;
+    }
+    if(!m_userid_sent) { // userid was not providing but already sending password
+        load_buffer("-First send username");
+        return;
+    }
+    if(m_tquery[1] == m_password) { // password is correct
+        if(!m_acc_sent) { // password is correct but user did not sent account
+            load_buffer("+Send account");
+        } else load_buffer("!" + m_userid + " logged in");
+        m_logged_in = true;
+        return;
+    }
+    load_buffer("-Wrong password, try again");
+}
+
+// TODO clean up a bit
+void sftpServer::cmd_list() {
+    bool verbose = false;
+    fs::path path = m_wdir;
+    std::string reply;
+    if(m_tquery.size() < 2 || m_tquery.size() > 3) { // invalid arg count
+        load_buffer("-Invalid query, usage: \"LIST { F | V } directory-path\"");
+        return;
+    }
+    if(m_tquery[1] == "V") verbose = true;
+    if(!verbose && m_tquery[1] != "F") { // invalid arg
+        load_buffer("-Invalid query, usage: \"LIST { F | V } directory-path\"");
+        return;
+    }
+    if(m_tquery.size() == 3) { // path was provided
+        path = m_tquery[2];
+        if(!fs::exists(path)) { // folder doesnt exist
+            load_buffer("-Folder does not exist, try again...");
+            return;
+        }
+    }
+    reply = "+" + path.string() + ":\n";
+    if(verbose) {
+        // TODO add more information for verbose option (only filesize may not be sufficient)
+        for(auto &item : fs::directory_iterator(path)) { // for verbose answer
+            uint filesize = !fs::is_directory(item.path()) ? fs::file_size(item.path()) : 0;
+            reply += item.path().filename().string() + " | " + (!fs::is_directory(item.path()) ? std::to_string(filesize) + "B " : "" )+ "\n";
+        }
+    } else {
+        for(auto &item : fs::directory_iterator(path)) { // for standard answer
+            reply += item.path().filename().string() + "\n";
+        }
+    }
+    load_buffer(reply);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 void sftpServer::load_buffer(std::string msg) {
     memcpy(m_buffer, msg.data(), msg.size());
 }
 
-
 bool sftpServer::is_valid_user(std::string userid) {
     std::vector<std::string> userpasses; // holds all lines from userpass.txt
     std::vector<std::string> pair; // will hold user and pass of single line
-    bool ok = load_file(userpasses, "userpass.txt");
-    if(!ok) error_call(FILE_IO_ERROR, "Loading userpass.txt failed");
-    for(auto user : userpasses) {
+    bool ok = load_file(userpasses, "userpass.txt"); // load file
+    if(!ok) error_call(FILE_IO_ERROR, "Loading userpass.txt failed"); // error
+    for(auto user : userpasses) { // iterate and find match
         tokenize(user, ':', pair);
-        if(userid == pair.front()) {
+        if(userid == pair.front()) { // match
             m_userid = userid; // user is valid, save userid and password to object
             m_password = pair.back();
             return true;
         }
+        pair.clear();
     }
     return false;
 }
