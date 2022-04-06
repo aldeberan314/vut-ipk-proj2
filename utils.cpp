@@ -19,6 +19,8 @@ command_code hash_string(std::string &string) {
     if (string == "RETR") return RETR;
     if (string == "STOR") return STOR;
     if (string == "TOBE") return TOBE;
+    if (string == "STOP") return STOP;
+    if (string == "SEND") return SEND;
     return ERROR;
 }
 
@@ -35,11 +37,8 @@ void tokenize(std::string const &str, const char delim, std::vector<std::string>
 }
 
 void get_rid_of_parents(std::filesystem::path &path) {
-    std::string res;
     std::regex regex("([^\\/]*\\/\\.\\.)(\\/|$)");
-    res = regex_replace(path.string(), regex, "");
-    PRINT(res);
-    path = res;
+    path = regex_replace(path.string(), regex, "");
 }
 
 bool load_file(std::vector<std::string> &outvec, std::string fileName) {

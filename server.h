@@ -14,6 +14,8 @@
 #include <sys/wait.h>
 #include <csignal>
 
+#include <stdlib.h>
+#include <stdio.h>
 #include <pcap.h>
 #include <vector>
 #include <fstream>
@@ -29,7 +31,7 @@
 #define PORT "5060"
 #define BACKLOG 10
 #define MAX_HOSTNAME_LEN 254
-#define BUFFER_SIZE 500
+#define BUFFER_SIZE 1024
 
 
 namespace fs = std::filesystem;
@@ -44,13 +46,14 @@ class sftpServer {
     char m_hostname[MAX_HOSTNAME_LEN];
     char m_buffer[BUFFER_SIZE];
     bool m_logged_in = false;
-    bool m_acc_sent = false;
     bool m_userid_sent = false;
     bool m_password_sent = false;
     bool m_NAME = false;
     bool m_done = false;
+    bool m_retr_planned = false;
     std::string m_userid;
     std::string m_password;
+    std::string m_retrieved_filename;
     fs::path m_wdir;
     fs::path m_path_to_be_renamed;
     stream_type m_stream_type;
@@ -88,6 +91,12 @@ public:
 
     void cmd_done();
 
+    void cmd_retr();
+
+    void cmd_stop();
+
+    void cmd_send();
+
 
 
     void check_tobe();
@@ -100,6 +109,7 @@ public:
 
     bool is_valid_count(int cnt, std::string msg, int upto = 0);
 
+    void send_file(std::string filename);
 
 };
 

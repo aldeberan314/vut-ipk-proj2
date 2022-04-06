@@ -108,7 +108,7 @@ void sftpServer::start_conversation() {
     }
 
     close_connection();
-    this->start();
+    //this->start();
 }
 
 void sftpServer::parse_query() {
@@ -147,11 +147,19 @@ void sftpServer::parse_query() {
             cmd_done();
             break;
         case RETR:
+            PRINT("switch RETR");
+            cmd_retr();
             break;
         case STOR:
             break;
         case TOBE:
             cmd_tobe();
+            break;
+        case STOP:
+            cmd_stop();
+            break;
+        case SEND:
+            cmd_send();
             break;
         case ERROR:
         default:
@@ -168,40 +176,31 @@ void sftpServer::parse_query() {
 
 void sftpServer::cmd_user() {
     if(!is_valid_count(2,"-Invalid query, usage: \"USER <userid>\"")) return;
-    auto user_id = m_tquery[1];
-
-    if(is_valid_user(user_id, 0)) { // user is valid
-        load_buffer("+" + m_userid + " valid, send password");
-        m_userid_sent = true;
+    if(m_logged_in) {
+        load_buffer("-Already logged in");
         return;
     }
+    auto user_id = m_tquery[1];
+
+
     if(m_tquery[1] == m_userid) { // password is correct and userid was provided
         load_buffer("!" + m_userid + " logged in");
         m_logged_in = true;
         return;
     }
+    if(is_valid_user(user_id, 0)) { // user is valid
+        load_buffer("+" + m_userid + " valid, send password");
+        m_userid_sent = true;
+        return;
+    }
     load_buffer("-Invalid user-id, try again"); // self-explanatory
 }
 
-void sftpServer::cmd_acct() {
-    if(!is_valid_count(2,"-Invalid query, usage: \"ACCT <account>\"")) return;
-    if(m_userid == m_tquery[1]) { // account is valid
-        load_buffer("+Account valid, send password");
-        m_acc_sent = true;
-        return;
-    }
-    load_buffer("-Invalid account, try again"); // self-explanatory
-}
-
-// TODO - preskumat postupnost prikazov USER - PASS - ACCT - PASS a najst riesenie ktore dava zmysel. Momentalne nedava vypisok zmysel, pretoze po pyta heslo znovu
-// mozno zakazat posielanie dalsieho hesla ked uz sme logged in? napr "+Already logged in"
 // TODO pri prikazoch kontrolovat ci je user logged in, nejaku fciu si na to napisat
 void sftpServer::cmd_pass() {
     if(!is_valid_count(2,"-Invalid query, usage: \"PASS <password>\"")) return;
-
-    if(is_valid_user(m_tquery[1], 1)) { // user is valid
-        load_buffer("+" + m_tquery[1] + " valid, send userid");
-        m_password_sent = true;
+    if(m_logged_in) {
+        load_buffer("-Already logged in");
         return;
     }
 
@@ -210,6 +209,13 @@ void sftpServer::cmd_pass() {
         m_logged_in = true;
         return;
     }
+
+    if(is_valid_user(m_tquery[1], 1)) { // user is valid
+        load_buffer("+" + m_tquery[1] + " valid, send userid");
+        m_password_sent = true;
+        return;
+    }
+
     load_buffer("-Wrong password, try again");
 }
 
@@ -276,7 +282,7 @@ void sftpServer::cmd_cdir() {
     }
     fs::path path(m_tquery[1]);
     if(path.is_relative()) { // user passed relative path
-        if(path.string() == "..") { // user passed ..
+        if(path.string() == "..") { // user passed ".."
             path = m_wdir.parent_path();
         } else {
             path = m_wdir / path;
@@ -301,7 +307,7 @@ void sftpServer::cmd_cdir() {
     load_buffer("+Changed directory to " + m_wdir.string());
 }
 
-// TODO must be logged in first, VELMI NEBEZBEČNÝ KÓD     -    🪦💀🪦💀🪦💀🪦💀🪦
+// TODO must be logged in first, VELMI NEBEZBEČNÝ KÓD - 🪦💀🪦💀🪦💀🪦💀🪦
 void sftpServer::cmd_kill() {
     if(!is_valid_count(2,"-Invalid query, usage: \"KILL <file_spec>\"")) return;
     fs::path file_spec(m_tquery[1]);
@@ -332,13 +338,24 @@ void sftpServer::cmd_name() {
     load_buffer("+File exists");
 }
 
+// TODO vylepsit - rozlisovat medzi file a folder
 void sftpServer::cmd_tobe() {
     if(!is_valid_count(2, "-Invalid query, usage: \"TOBE new-file-spec\"")) return;
+    if(!m_NAME) { // po NAME bol zadany iny prikaz
+        load_buffer("-Send NAME query first");
+        return;
+    }
     fs::path new_name(m_tquery[1]);
 
     fs::path path_to_file = m_path_to_be_renamed.parent_path();
     PRINT2(m_path_to_be_renamed.string(), new_name.string());
-    fs::rename(m_path_to_be_renamed, path_to_file/new_name);
+    try {
+        fs::rename(m_path_to_be_renamed, path_to_file/new_name);
+    }
+    catch (...) {
+        load_buffer("-Failed to rename file, reason: unknown");
+        return;
+    }
     load_buffer( "+" + m_path_to_be_renamed.string() + " renamed to " + new_name.string());
 }
 
@@ -347,8 +364,52 @@ void sftpServer::cmd_done() {
     m_done = true;
 }
 
+void sftpServer::cmd_retr() {
+    PRINT("in cmd_retr");
+    if(!is_valid_count(2, "-Invalid query, usage: \"RETR file-spec\"")) return;
+    fs::path file(m_tquery[1]);
+    if(!fs::exists(file)) {
+        load_buffer("-File does not exist");
+        return;
+    }
+    size_t size = fs::file_size(file);
+    m_retr_planned = true;
+    m_retrieved_filename = file.string();
+    load_buffer("+ " + std::to_string(size));
+}
+
+void sftpServer::cmd_stop() {
+    if(!m_retr_planned) {
+        load_buffer("-No RETR query to be stopped");
+        return;
+    }
+    m_retr_planned = false;
+    load_buffer("+ok, RETR aborted");
+}
+
+void sftpServer::cmd_send() {
+    send_file(m_retrieved_filename);
+    load_buffer("+File send successfully");
+}
 
 
+
+
+
+
+void sftpServer::send_file(std::string filename) {
+    FILE *fp;
+    fp = fopen(filename.data(), "r");
+    if(fp == nullptr) error_call(FILE_IO_ERROR, "Error occured while opening " + filename);
+    char data[BUFFER_SIZE];
+
+    while(fgets(data, BUFFER_SIZE, fp) != nullptr) {
+        if(send(m_socket, data, sizeof(data), 0) == -1) {
+            error_call(TRANSMISSION_ERROR, "Error while sending file");
+            bzero(data, BUFFER_SIZE);
+        }
+    }
+}
 
 void sftpServer::check_tobe() {
     if(m_NAME) {

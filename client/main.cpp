@@ -14,7 +14,7 @@
 #define PRINT(x) std::cout << x << std::endl
 #define PORT "5060"
 #define LOCALHOST "127.0.0.1"
-#define MAX_DATA_SIZE 500
+#define MAX_DATA_SIZE 1024
 
 // CMD + SHIFT + ENTER  == ; na koniec line
 
@@ -24,6 +24,32 @@ void *get_in_addr(struct sockaddr *sa) {
     }
     return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
+
+
+void retrieve_file(int sockfd) {
+    int n;
+    FILE *fp;
+    std::string filename("testfile.txt");
+    char buffer[MAX_DATA_SIZE];
+
+    fp = fopen(filename.data(), "r");
+    if(fp == nullptr) {
+        PRINT("Error with opening file");
+        exit(0);
+        //error_call(FILE_IO_ERROR, "Error occured while opening " + filename);
+    }
+
+    while(true) {
+        n = recv(sockfd, buffer, MAX_DATA_SIZE, 0);
+        if(n <= 0) {
+            break;return;
+        }
+        fprintf(fp, "%s", buffer);
+        bzero(buffer, MAX_DATA_SIZE);
+    }
+    return;
+}
+
 
 
 int main(int argc, char *argv[]) {
@@ -86,6 +112,16 @@ int main(int argc, char *argv[]) {
         memcpy(buffer, user_input.data(), user_input.length());
         send(sock, buffer, user_input.length(), 0);
         memset(buffer, 0, MAX_DATA_SIZE);
+
+
+
+
+        if(user_input == "SEND") {
+            retrieve_file(sock);
+        }
+
+
+
 
         // read from sercer
         if((numbytes = recv(sock, buffer, MAX_DATA_SIZE-1, 0)) == -1) {

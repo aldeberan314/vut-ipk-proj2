@@ -33,6 +33,8 @@ enum command_code {
     RETR,
     STOR,
     TOBE,
+    STOP,
+    SEND,
     ERROR
 };
 
