@@ -108,6 +108,7 @@ void sftpServer::start_conversation() {
     }
 
     close_connection();
+    this->start();
 }
 
 void sftpServer::parse_query() {
@@ -122,7 +123,7 @@ void sftpServer::parse_query() {
             cmd_user();
             break;
         case ACCT:
-            cmd_acct();
+            cmd_user();
             break;
         case PASS:
             cmd_pass();
@@ -168,9 +169,15 @@ void sftpServer::parse_query() {
 void sftpServer::cmd_user() {
     if(!is_valid_count(2,"-Invalid query, usage: \"USER <userid>\"")) return;
     auto user_id = m_tquery[1];
-    if(is_valid_user(user_id)) { // user is valid
-        load_buffer("+" + m_userid + " valid, send account and password");
+
+    if(is_valid_user(user_id, 0)) { // user is valid
+        load_buffer("+" + m_userid + " valid, send password");
         m_userid_sent = true;
+        return;
+    }
+    if(m_tquery[1] == m_userid) { // password is correct and userid was provided
+        load_buffer("!" + m_userid + " logged in");
+        m_logged_in = true;
         return;
     }
     load_buffer("-Invalid user-id, try again"); // self-explanatory
@@ -191,14 +198,15 @@ void sftpServer::cmd_acct() {
 // TODO pri prikazoch kontrolovat ci je user logged in, nejaku fciu si na to napisat
 void sftpServer::cmd_pass() {
     if(!is_valid_count(2,"-Invalid query, usage: \"PASS <password>\"")) return;
-    if(!m_userid_sent) { // userid was not providing but already sending password
-        load_buffer("-First send username");
+
+    if(is_valid_user(m_tquery[1], 1)) { // user is valid
+        load_buffer("+" + m_tquery[1] + " valid, send userid");
+        m_password_sent = true;
         return;
     }
-    if(m_tquery[1] == m_password) { // password is correct
-        if(!m_acc_sent) { // password is correct but user did not sent account
-            load_buffer("+Send account");
-        } else load_buffer("!" + m_userid + " logged in");
+
+    if(m_tquery[1] == m_password) { // password is correct and userid was provided
+        load_buffer("!" + m_userid + " logged in");
         m_logged_in = true;
         return;
     }
@@ -293,7 +301,7 @@ void sftpServer::cmd_cdir() {
     load_buffer("+Changed directory to " + m_wdir.string());
 }
 
-// TODO must be logged in first
+// TODO must be logged in first, VELMI NEBEZBEČNÝ KÓD     -    🪦💀🪦💀🪦💀🪦💀🪦
 void sftpServer::cmd_kill() {
     if(!is_valid_count(2,"-Invalid query, usage: \"KILL <file_spec>\"")) return;
     fs::path file_spec(m_tquery[1]);
@@ -377,7 +385,7 @@ bool sftpServer::is_valid_count(int cnt, std::string msg, int upto) {
 void sftpServer::load_buffer(std::string msg) {
     memcpy(m_buffer, msg.data(), msg.size());
 }
-
+/*
 bool sftpServer::is_valid_user(std::string userid) {
     std::vector<std::string> userpasses; // holds all lines from userpass.txt
     std::vector<std::string> pair; // will hold user and pass of single line
@@ -387,6 +395,23 @@ bool sftpServer::is_valid_user(std::string userid) {
         tokenize(user, ':', pair);
         if(userid == pair.front()) { // match
             m_userid = userid; // user is valid, save userid and password to object
+            m_password = pair.back();
+            return true;
+        }
+        pair.clear();
+    }
+    return false;
+}*/
+
+bool sftpServer::is_valid_user(std::string token, bool is_password) {
+    std::vector <std::string> userpasses; // holds all lines from userpass.txt
+    std::vector <std::string> pair; // will hold user and pass of single line
+    bool ok = load_file(userpasses, "userpass.txt"); // load file
+    if (!ok) error_call(FILE_IO_ERROR, "Loading userpass.txt failed"); // error
+    for (auto userpass: userpasses) { // iterate and find match
+        tokenize(userpass, ':', pair);
+        if (token == pair[is_password]) { // match
+            m_userid = pair.front(); // user is valid, save userid and password to object
             m_password = pair.back();
             return true;
         }

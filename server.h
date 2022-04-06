@@ -46,6 +46,7 @@ class sftpServer {
     bool m_logged_in = false;
     bool m_acc_sent = false;
     bool m_userid_sent = false;
+    bool m_password_sent = false;
     bool m_NAME = false;
     bool m_done = false;
     std::string m_userid;
@@ -95,7 +96,7 @@ public:
 
     void load_buffer(std::string msg);
 
-    bool is_valid_user(std::string userid);
+    bool is_valid_user(std::string token,  bool is_password);
 
     bool is_valid_count(int cnt, std::string msg, int upto = 0);
 
