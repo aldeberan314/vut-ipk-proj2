@@ -53,10 +53,13 @@ class sftpServer {
     bool m_NAME = false;
     bool m_done = false;
     bool m_retr_planned = false;
+    bool m_stor_planned = false;
     std::string m_userid;
     std::string m_password;
     std::string m_retrieved_filename;
     int m_retrieved_filesize;
+    std::string m_stored_filename;
+    int m_stored_filesize;
     fs::path m_wdir;
     fs::path m_path_to_be_renamed;
     stream_type m_stream_type;
@@ -100,7 +103,14 @@ public:
 
     void cmd_send();
 
+    void cmd_stor();
 
+    void cmd_size();
+
+
+
+
+    void retrieve_file();
 
     void check_tobe();
 

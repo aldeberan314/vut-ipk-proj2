@@ -48,3 +48,5 @@ void tokenize(std::string const &str, const char delim, std::vector<std::string>
 void get_rid_of_parents(std::filesystem::path &path);
 
 bool load_file(std::vector<std::string> &outvec, std::string fileName);
+
+bool is_number(const std::string &s);

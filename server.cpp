@@ -3,7 +3,6 @@
 //
 #include "server.h"
 #include "error.h"
-#include "file_handler.h"
 
 
 
@@ -147,10 +146,10 @@ void sftpServer::parse_query() {
             cmd_done();
             break;
         case RETR:
-            PRINT("switch RETR");
             cmd_retr();
             break;
         case STOR:
+            cmd_stor();
             break;
         case TOBE:
             cmd_tobe();
@@ -160,6 +159,9 @@ void sftpServer::parse_query() {
             break;
         case SEND:
             cmd_send();
+            break;
+        case SIZE:
+            cmd_size();
             break;
         case ERROR:
         default:
@@ -393,10 +395,97 @@ void sftpServer::cmd_send() {
     load_buffer("+File send successfully");
 }
 
+void sftpServer::cmd_stor() {
+    if(!is_valid_count(3, "-Invalid query, usage: \"STOR { NEW | OLD | APP } file-spec\"")) return;
+    auto type = m_tquery[1];
+    auto filename = m_tquery[2];
+    bool exists = fs::exists(fs::path(filename));
+    m_stored_filename = filename;
+    if(!(type == "NEW" || type == "OLD" || type == "APP")) {
+        load_buffer("-Invalid query, usage: \"STOR { NEW | OLD | APP } file-spec\"");
+        return;
+    }
+    if (type == "NEW") {
+        if(exists) {
+            load_buffer("-File exists, but system doesn't support generations");
+            return;
+        }
+        load_buffer("+File does not exist, will create new file");
+        m_stor_planned = true;
+        //todo flag
+        return;
+    }
+    m_stor_planned = true;
+    if (type == "OLD") {
+        if(exists) {
+            load_buffer("+Will write over old file");
+            return;
+        }
+        load_buffer("+Will create new file");
+        return;
+    }
+    if(type == "APP") {
+        if(exists) {
+            load_buffer("+Will append to new file");
+            return;
+        }
+        load_buffer("+Will create new file");
+    }
+}
+
+void sftpServer::cmd_size() {
+    if(!is_valid_count(2, "-Invalid query, usage: \"SIZE <number-of-bytes-in-file>\"")) return;
+    if(!m_stor_planned) {
+        load_buffer("-Send STOR query first");
+        return;
+    }
+    if(!is_number(m_tquery[1])) {
+        load_buffer("-Not a valid filesize");
+        return;
+    }
+    m_stored_filesize = atoi(m_tquery[1].data());
+    retrieve_file();
+    load_buffer("+Saved " + m_stored_filename);
+}
 
 
+void sftpServer::retrieve_file() {
+    PRINT("in retrieve_file");
+    //todo appending
+    char buffer[BUFFER_SIZE];
+    bzero(buffer, BUFFER_SIZE);
+    int bytes_left = m_stored_filesize;
+    ssize_t len;
+    FILE *fp;
 
 
+    fp = fopen(m_stored_filename.data(), "wb");
+    if(fp == nullptr) {
+        PRINT("Error with opening file");
+        exit(0);
+    }
+    PRINT("serv: file opened");
+    PRINT2("Bytes left: ", m_stored_filesize);
+
+    while(bytes_left) {
+        if(bytes_left < BUFFER_SIZE) {
+            len = recv(m_socket, buffer, bytes_left, 0);
+            fwrite(buffer, sizeof(char), len, fp);
+            bytes_left -= len;
+            printf("Received %lu bytes, expecting %d bytes\n", len, bytes_left);
+            memset(buffer, 0, BUFFER_SIZE);
+            break;
+        } else {
+            len = recv(m_socket, buffer, BUFFER_SIZE, 0); //256
+            fwrite(buffer, sizeof(char), len, fp);
+            bytes_left -= len;
+            printf("Received %lu bytes, expecting: %d bytes\n", len, bytes_left);
+        }
+        memset(buffer, 0, BUFFER_SIZE);
+    }
+    fclose(fp);
+    return;
+}
 
 void sftpServer::send_file(std::string filename) {
     FILE *fp;

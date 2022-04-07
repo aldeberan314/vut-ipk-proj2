@@ -13,14 +13,17 @@
 #include <vector>
 #include <fstream>
 
-
+void error_call(int errcode, std::string errmsg) {
+    std::cerr << errmsg << " " <<  "\n";
+    exit(errcode);
+}
 
 
 #define PRINT(x) std::cout << x << std::endl
 #define PRINT2(x, y) std::cout << x << " " << y <<  std::endl
 #define PORT "5060"
 #define LOCALHOST "127.0.0.1"
-#define MAX_DATA_SIZE 1024
+#define BUFFER_SIZE 1024
 
 // CMD + SHIFT + ENTER  == ; na koniec line
 
@@ -28,13 +31,7 @@ typedef unsigned char BYTE;
 
 std::string savename;
 
-void save(const std::string &filename, const std::vector<BYTE>& vec) {
-    PRINT("[SAVE] SAVING FILE");
-    std::ofstream file (filename);
-    for(unsigned char i : vec) {
-        file << i;
-    }
-}
+
 
 
 void *get_in_addr(struct sockaddr *sa) {
@@ -44,11 +41,46 @@ void *get_in_addr(struct sockaddr *sa) {
     return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
 
+void send_file(std::string filename, int sockfd, int filesize) {
+    PRINT("in send_file");
+    FILE *fp;
+    int n;
+    int read_bytes;
+    int bytes_left = filesize;
+
+
+    fp = fopen(filename.data(), "rb");
+    if(fp == nullptr) error_call(3, "Error occured while opening " + filename);
+    PRINT2("cl: file opened", bytes_left);
+    char data[BUFFER_SIZE];
+    memset(data, 0, BUFFER_SIZE);
+
+
+    while (bytes_left) {
+        if(bytes_left < BUFFER_SIZE) {
+            read_bytes = fread(data, 1, bytes_left, fp);
+            bytes_left = bytes_left - read_bytes;
+            n = send(sockfd, data, bytes_left + read_bytes, 0);
+            if(n < 0) printf("Error sending slab\n");
+            printf("sent %d slab\n", read_bytes);
+        } else {
+            read_bytes = fread(data, 1, BUFFER_SIZE, fp);
+            bytes_left -= read_bytes;
+            n = send(sockfd, data, BUFFER_SIZE, 0);
+            if(n < 0) printf("Error sending slab\n");
+            printf("sent %d slab\n", read_bytes);
+        }
+    }
+    printf("File sent!\n");
+    fclose(fp);
+    return;   
+}
+
 
 void retrieve_file(int sockfd, size_t filesize) {
 
-    char buffer[MAX_DATA_SIZE];
-    bzero(buffer, MAX_DATA_SIZE);
+    char buffer[BUFFER_SIZE];
+    bzero(buffer, BUFFER_SIZE);
     int remainingData = filesize;
     ssize_t len;
     FILE *fp;
@@ -61,20 +93,20 @@ void retrieve_file(int sockfd, size_t filesize) {
     }
 
     while(remainingData) {
-        if(remainingData < MAX_DATA_SIZE) {
+        if(remainingData < BUFFER_SIZE) {
             len = recv(sockfd, buffer, remainingData, 0);
             fwrite(buffer, sizeof(char), len, fp);
             remainingData -= len;
             printf("Received %lu bytes, expecting %d bytes\n", len, remainingData);
-            memset(buffer, 0, MAX_DATA_SIZE);
+            memset(buffer, 0, BUFFER_SIZE);
             break;
         } else {
-            len = recv(sockfd, buffer, MAX_DATA_SIZE, 0); //256
+            len = recv(sockfd, buffer, BUFFER_SIZE, 0); //256
             fwrite(buffer, sizeof(char), len, fp);
             remainingData -= len;
             printf("Received %lu bytes, expecting: %d bytes\n", len, remainingData);
         }
-        memset(buffer, 0, MAX_DATA_SIZE);
+        memset(buffer, 0, BUFFER_SIZE);
     }
     fclose(fp);
     return;
@@ -84,7 +116,7 @@ void retrieve_file(int sockfd, size_t filesize) {
 int main(int argc, char *argv[]) {
     savename = argv[1];
     int sock, numbytes, filesize;
-    char buffer[MAX_DATA_SIZE];
+    char buffer[BUFFER_SIZE];
     addrinfo hints, *servinfo, *p;
     int gai_r;
     char s[INET6_ADDRSTRLEN];
@@ -127,7 +159,7 @@ int main(int argc, char *argv[]) {
     freeaddrinfo(servinfo);
 
 
-    if((numbytes = recv(sock, buffer, MAX_DATA_SIZE-1, 0)) == -1) {
+    if((numbytes = recv(sock, buffer, BUFFER_SIZE-1, 0)) == -1) {
         PRINT("recv error, exiting...");
         exit(0);
     }
@@ -135,25 +167,28 @@ int main(int argc, char *argv[]) {
     while(true) {
 
         buffer[numbytes] = '\0';
-        memset(buffer, 0, MAX_DATA_SIZE);
+        memset(buffer, 0, BUFFER_SIZE);
         std::getline(std::cin, user_input);
         if(user_input == "DONE") {
             break;
         }
         memcpy(buffer, user_input.data(), user_input.length());
         send(sock, buffer, user_input.length(), 0);
-        memset(buffer, 0, MAX_DATA_SIZE);
+        memset(buffer, 0, BUFFER_SIZE);
 
 
+        if(user_input[0] == 'S' && user_input[1] == 'I' && user_input[2] == 'Z' && user_input[3] == 'E') {
+            PRINT(user_input.data() + 4);
+            send_file(argv[1], sock, atoi(user_input.data() + 4));
+        }
 
 
         if(user_input == "SEND") {
             retrieve_file(sock, filesize);
-            PRINT("JUST RETURNED");
         }
 
         // read from server
-        if((numbytes = recv(sock, buffer, MAX_DATA_SIZE-1, 0)) == -1) {
+        if((numbytes = recv(sock, buffer, BUFFER_SIZE-1, 0)) == -1) {
             PRINT("recv error, exiting...");
             exit(0);
         }
@@ -164,9 +199,11 @@ int main(int argc, char *argv[]) {
             filesize = atoi(buffer);
         }
 
+
+
         // print server msg
         PRINT(buffer);
-        memset(buffer, 0, MAX_DATA_SIZE);
+        memset(buffer, 0, BUFFER_SIZE);
 
 
     }
