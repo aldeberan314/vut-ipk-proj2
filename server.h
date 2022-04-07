@@ -14,6 +14,8 @@
 #include <sys/wait.h>
 #include <csignal>
 
+#include <chrono>
+#include <thread>
 #include <stdlib.h>
 #include <stdio.h>
 #include <pcap.h>
@@ -54,6 +56,7 @@ class sftpServer {
     std::string m_userid;
     std::string m_password;
     std::string m_retrieved_filename;
+    int m_retrieved_filesize;
     fs::path m_wdir;
     fs::path m_path_to_be_renamed;
     stream_type m_stream_type;

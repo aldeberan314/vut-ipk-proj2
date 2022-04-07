@@ -6,7 +6,7 @@
 
 
 
-command_code hash_string(std::string &string) {
+command_code code_string(std::string &string) {
     if (string == "USER") return USER;
     if (string == "ACCT") return ACCT;
     if (string == "PASS") return PASS;
@@ -21,6 +21,7 @@ command_code hash_string(std::string &string) {
     if (string == "TOBE") return TOBE;
     if (string == "STOP") return STOP;
     if (string == "SEND") return SEND;
+    if (string == "SIZE") return SIZE;
     return ERROR;
 }
 

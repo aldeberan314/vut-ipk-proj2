@@ -3,7 +3,7 @@
 //
 #include "server.h"
 #include "error.h"
-
+#include "file_handler.h"
 
 
 
@@ -102,8 +102,9 @@ void sftpServer::start_conversation() {
 
         //respond
         //PRINT2(strlen(m_buffer), m_buffer);
-        PRINT(m_buffer);
         send(m_socket, m_buffer, strlen(m_buffer), 0);
+        PRINT2(m_buffer, " sent");
+
         if(m_done) break;
     }
 
@@ -114,11 +115,10 @@ void sftpServer::start_conversation() {
 void sftpServer::parse_query() {
     std::string query(m_buffer);
     memset(m_buffer, 0, BUFFER_SIZE); // clear buffer for reply
-    const char delimiter = ' ';
-    tokenize(query, delimiter, m_tquery);
+    tokenize(query, ' ', m_tquery);
     check_tobe();
 
-    switch (hash_string(m_tquery.front())) {
+    switch (code_string(m_tquery.front())) {
         case USER:
             cmd_user();
             break;
@@ -375,7 +375,8 @@ void sftpServer::cmd_retr() {
     size_t size = fs::file_size(file);
     m_retr_planned = true;
     m_retrieved_filename = file.string();
-    load_buffer("+ " + std::to_string(size));
+    m_retrieved_filesize = size;
+    load_buffer(std::to_string(size));
 }
 
 void sftpServer::cmd_stop() {
@@ -399,16 +400,35 @@ void sftpServer::cmd_send() {
 
 void sftpServer::send_file(std::string filename) {
     FILE *fp;
-    fp = fopen(filename.data(), "r");
+    int n;
+    int read_bytes;
+    int bytes_left = m_retrieved_filesize;
+
+
+    fp = fopen(filename.data(), "rb");
     if(fp == nullptr) error_call(FILE_IO_ERROR, "Error occured while opening " + filename);
     char data[BUFFER_SIZE];
+    memset(data, 0, BUFFER_SIZE);
 
-    while(fgets(data, BUFFER_SIZE, fp) != nullptr) {
-        if(send(m_socket, data, sizeof(data), 0) == -1) {
-            error_call(TRANSMISSION_ERROR, "Error while sending file");
-            bzero(data, BUFFER_SIZE);
+
+    while (bytes_left) {
+        if(bytes_left < BUFFER_SIZE) {
+            read_bytes = fread(data, 1, bytes_left, fp);
+            bytes_left = bytes_left - read_bytes;
+            n = send(m_socket, data, bytes_left + read_bytes, 0);
+            if(n < 0) printf("Error sending slab\n");
+            //printf("sent %d slab\n", read_bytes);
+        } else {
+            read_bytes = fread(data, 1, BUFFER_SIZE, fp);
+            bytes_left -= read_bytes;
+            n = send(m_socket, data, BUFFER_SIZE, 0);
+            if(n < 0) printf("Error sending slab\n");
+            //printf("sent %d slab\n", read_bytes);
         }
     }
+    //printf("File sent!\n");
+    fclose(fp);
+    return;
 }
 
 void sftpServer::check_tobe() {
@@ -446,23 +466,6 @@ bool sftpServer::is_valid_count(int cnt, std::string msg, int upto) {
 void sftpServer::load_buffer(std::string msg) {
     memcpy(m_buffer, msg.data(), msg.size());
 }
-/*
-bool sftpServer::is_valid_user(std::string userid) {
-    std::vector<std::string> userpasses; // holds all lines from userpass.txt
-    std::vector<std::string> pair; // will hold user and pass of single line
-    bool ok = load_file(userpasses, "userpass.txt"); // load file
-    if(!ok) error_call(FILE_IO_ERROR, "Loading userpass.txt failed"); // error
-    for(auto user : userpasses) { // iterate and find match
-        tokenize(user, ':', pair);
-        if(userid == pair.front()) { // match
-            m_userid = userid; // user is valid, save userid and password to object
-            m_password = pair.back();
-            return true;
-        }
-        pair.clear();
-    }
-    return false;
-}*/
 
 bool sftpServer::is_valid_user(std::string token, bool is_password) {
     std::vector <std::string> userpasses; // holds all lines from userpass.txt
