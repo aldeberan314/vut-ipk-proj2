@@ -32,13 +32,20 @@ int sftpServer::bind_to(addrinfo *ptr, int& yes, addrinfo *servinfo) {
             PRINT("SOCKET ERROR");
             continue;
         }
+
+        if(setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(int)) == -1) {
+            PRINT2("SETSOCKOPT ERROR", errno);
+            exit(1);
+        }
+
         if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
             PRINT("SETSOCKOPT ERROR");
             exit(1);
         }
+
         if(bind(sock, ptr->ai_addr, ptr->ai_addrlen) == -1) {
             close(sock);
-            PRINT("BIND ERROR");
+            PRINT2("BIND ERROR: ", errno);
             continue;
         }
         break;
@@ -50,7 +57,6 @@ void sftpServer::start() {
     PRINT("[SERVER] Starting...");
     int sock; // socket file descriptors
     int yes = 1;
-    int numbytes;
     socklen_t sin_size = sizeof(sockaddr_storage); // for accept
     addrinfo *servinfo, *p; // pointers to addrinfo
 
@@ -58,20 +64,26 @@ void sftpServer::start() {
         error_call(CONNECTION_ERROR, "gai_err", 1);
     }
 
+
     PRINT("[SERVER] Waiting for connections...");
     sock = bind_to(p, yes, servinfo);
+    m_sonk = sock;
     freeaddrinfo(servinfo);
     if(!p) {
         error_call(CONNECTION_ERROR, "server:failed to bind", errno);
     }
-
     if(listen(sock, BACKLOG) == -1) {
         error_call(CONNECTION_ERROR, "server: listen", errno);
     }
 
-    m_socket = accept(sock, (sockaddr*)&m_client_addr, &sin_size);
+    accept_connection(sock);
+}
+
+void sftpServer::accept_connection(int sonk) {
+    socklen_t sin_size = sizeof(sockaddr_storage); // for accept
+    m_socket = accept(sonk, (sockaddr*)&m_client_addr, &sin_size);
     if(m_socket == -1) {
-        error_call(CONNECTION_ERROR, "server: accept");
+        error_call(CONNECTION_ERROR, "server: accept", errno);
     }
 
     inet_ntop(m_client_addr.ss_family, get_in_addr((sockaddr*)&m_client_addr), m_ipaddr, sizeof(m_ipaddr));
@@ -81,7 +93,8 @@ void sftpServer::start() {
 }
 
 void sftpServer::close_connection() {
-    close(m_socket);
+    shutdown(m_socket, SHUT_RDWR);
+    //close(m_socket);
 }
 
 void sftpServer::start_conversation() {
@@ -94,21 +107,21 @@ void sftpServer::start_conversation() {
         //recv
         numbytes = receive();
         if(!numbytes) { // connection closed by remote peer
+            PRINT("Connection closed by remote peer");
             break;
         }
         //parse query
         parse_query();
 
         //respond
-        //PRINT2(strlen(m_buffer), m_buffer);
         send(m_socket, m_buffer, strlen(m_buffer), 0);
-        PRINT2(m_buffer, " sent");
+        PRINT(m_buffer);
 
         if(m_done) break;
     }
-
     close_connection();
-    //this->start();
+    reset_server_settings();
+    this->accept_connection(m_sonk);
 }
 
 void sftpServer::parse_query() {
@@ -172,8 +185,7 @@ void sftpServer::parse_query() {
 }
 
 
-
-
+// =====================================================================================================================
 
 
 void sftpServer::cmd_user() {
@@ -449,6 +461,9 @@ void sftpServer::cmd_size() {
 }
 
 
+// =====================================================================================================================
+
+
 void sftpServer::retrieve_file() {
     PRINT("in retrieve_file");
     //todo appending
@@ -515,7 +530,6 @@ void sftpServer::send_file(std::string filename) {
             //printf("sent %d slab\n", read_bytes);
         }
     }
-    //printf("File sent!\n");
     fclose(fp);
     return;
 }
@@ -571,4 +585,23 @@ bool sftpServer::is_valid_user(std::string token, bool is_password) {
         pair.clear();
     }
     return false;
+}
+
+void sftpServer::reset_server_settings() {
+    m_logged_in = false;
+    m_userid_sent = false;
+    m_password_sent = false;
+    m_NAME = false;
+    m_done = false;
+    m_retr_planned = false;
+    m_stor_planned = false;
+    m_userid.clear();
+    m_password.clear();
+    m_retrieved_filename.clear();
+    m_retrieved_filesize = 0;
+    m_stored_filename.clear();
+    m_stored_filesize = 0;
+    m_wdir = fs::current_path();
+    m_path_to_be_renamed.clear();
+    m_stream_type = BINARY;
 }

@@ -1,12 +1,17 @@
 CC=g++ -std=c++17
 LBS=-lpcap
-OBJS=argparser.o server.o error.o utils.o main.o
-APPNAME=sftp
+S_OBJS=argparser.o server.o error.o utils.o main.o
+C_OBJS=client.o error.o utils.o cmain.o
+SERVERNAME=ipk-simpleftp-server
+CLIENTNAME=ipk-simpleftp-client
 
-all: sftp clean_objs
+all: server client
 
-sftp: $(OBJS)
-	$(CC) -o $(APPNAME) $(OBJS)
+client: $(C_OBJS) clean_objs
+	$(CC) -o $(CLIENTNAME) $(C_OBJS)
+
+server: $(S_OBJS) clean_objs
+	$(CC) -o $(SERVERNAME) $(S_OBJS)
 
 argparser.o: argparser.cpp
 	$(CC) -c argparser.cpp
@@ -23,11 +28,22 @@ utils.o: utils.cpp
 main.o: main.cpp
 	$(CC) -c main.cpp
 
+client.o: client.cpp
+	$(CC) -c client.cpp
+
+cmain.o: cmain.cpp
+	$(CC) -c cmain.cpp
+
+
+
+
+
+
 run:
-	./sftp -i en0 -p 117 -u cesta -f cestam
+	./ipk-simpleftp-server -i en0 -p 117 -u cesta -f cestam
 
 clean:
-	rm -f sftp *.o
+	rm -f ipk-simpleftp-server ipk-simpleftp-client *.o
 
 clean_objs:
 	rm -f *.o

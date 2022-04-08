@@ -19,9 +19,11 @@ void test() {
 
 int main(int argc, char ** argv) {
     auto parser = ArgParserServer(argc, argv);
-    auto server = sftpServer();
     parser.parse();
-    server.start();
+
+        auto server = sftpServer();
+        server.start();
+
     return 0;
 }
 

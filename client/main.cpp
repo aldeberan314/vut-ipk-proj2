@@ -121,7 +121,6 @@ int main(int argc, char *argv[]) {
     int gai_r;
     char s[INET6_ADDRSTRLEN];
     std::string user_input;
-    std::vector<std::string> vec;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_addr = AF_UNSPEC;
@@ -147,7 +146,6 @@ int main(int argc, char *argv[]) {
         }
         break;
     }
-
     if (p == NULL) {
         PRINT("client: failed to connect, returning");
         return 2;
@@ -199,15 +197,12 @@ int main(int argc, char *argv[]) {
             filesize = atoi(buffer);
         }
 
-
-
         // print server msg
         PRINT(buffer);
         memset(buffer, 0, BUFFER_SIZE);
 
 
     }
-
 
     close(sock);
 

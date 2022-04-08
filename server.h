@@ -63,13 +63,15 @@ class sftpServer {
     fs::path m_wdir;
     fs::path m_path_to_be_renamed;
     stream_type m_stream_type;
-
+    int m_sonk;
 
 public:
     sftpServer();
     int bind_to(addrinfo *ptr, int &yes,  addrinfo *servinfo);
     void *get_in_addr(struct sockaddr *sa);
     void start();
+
+    void accept_connection(int sonk);
 
     void close_connection();
 
@@ -124,6 +126,7 @@ public:
 
     void send_file(std::string filename);
 
+    void reset_server_settings();
 };
 
 
