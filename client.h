@@ -30,6 +30,7 @@
 
 #include "error.h"
 #include "utils.h"
+#include "argparser_client.h"
 
 #define BUFFER_SIZE 1024
 #define LOCALHOST "127.0.0.1"
@@ -43,9 +44,15 @@ class sftpClient/* : private communicant */{
     char m_ipaddr[INET6_ADDRSTRLEN];
     addrinfo m_hints;
     fs::path m_retr_filename;
+    std::string m_send_filename;
+    bool m_done = false;
+    bool m_send = false;
+    bool m_stor_planned = false;
+    std::vector<std::string> m_tquery;
+    ArgParserClient *m_args;
 
 public:
-    sftpClient();
+    sftpClient(ArgParserClient *args);
 
     void *get_in_addr(struct sockaddr *sa);
 

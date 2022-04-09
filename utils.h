@@ -43,6 +43,7 @@ enum command_code {
 
 
 command_code code_string(std::string &string);
+
 void tokenize(std::string const &str, const char delim, std::vector<std::string> &out);
 
 void get_rid_of_parents(std::filesystem::path &path);

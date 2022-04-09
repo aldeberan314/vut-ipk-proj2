@@ -12,6 +12,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
+#include <net/if.h>
 #include <csignal>
 
 #include <chrono>
@@ -22,9 +23,11 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
+#include <regex>
 
 #include "error.h"
 #include "utils.h"
+#include "argparser.h"
 
 
 #ifndef SFTP_SERVER_H
@@ -41,6 +44,7 @@ namespace fs = std::filesystem;
 
 class sftpServer {
     int m_socket;
+    //int m_port;
     addrinfo m_hints;
     sockaddr_storage m_client_addr;
     std::vector<std::string> m_tquery;
@@ -62,11 +66,13 @@ class sftpServer {
     int m_stored_filesize;
     fs::path m_wdir;
     fs::path m_path_to_be_renamed;
+    std::string m_port;
     stream_type m_stream_type;
     int m_sonk;
+    ArgParserServer *m_args;
 
 public:
-    sftpServer();
+    sftpServer(ArgParserServer *args);
     int bind_to(addrinfo *ptr, int &yes,  addrinfo *servinfo);
     void *get_in_addr(struct sockaddr *sa);
     void start();

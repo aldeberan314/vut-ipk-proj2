@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <cstdlib>
 
-#include "argparser.h"
 #include "server.h"
 
 
@@ -20,9 +19,8 @@ void test() {
 int main(int argc, char ** argv) {
     auto parser = ArgParserServer(argc, argv);
     parser.parse();
-
-        auto server = sftpServer();
-        server.start();
+    auto server = sftpServer(&parser);
+    server.start();
 
     return 0;
 }

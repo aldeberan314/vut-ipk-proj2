@@ -177,6 +177,7 @@ int main(int argc, char *argv[]) {
 
         if(user_input[0] == 'S' && user_input[1] == 'I' && user_input[2] == 'Z' && user_input[3] == 'E') {
             PRINT(user_input.data() + 4);
+            if()
             send_file(argv[1], sock, atoi(user_input.data() + 4));
         }
 

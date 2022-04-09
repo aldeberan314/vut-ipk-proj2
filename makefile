@@ -1,16 +1,16 @@
 CC=g++ -std=c++17
 LBS=-lpcap
 S_OBJS=argparser.o server.o error.o utils.o main.o
-C_OBJS=client.o error.o utils.o cmain.o
+C_OBJS=client.o error.o utils.o argparser_client.o cmain.o
 SERVERNAME=ipk-simpleftp-server
 CLIENTNAME=ipk-simpleftp-client
 
-all: server client
+all: server client clob
 
-client: $(C_OBJS) clean_objs
+client: $(C_OBJS)
 	$(CC) -o $(CLIENTNAME) $(C_OBJS)
 
-server: $(S_OBJS) clean_objs
+server: $(S_OBJS)
 	$(CC) -o $(SERVERNAME) $(S_OBJS)
 
 argparser.o: argparser.cpp
@@ -34,16 +34,15 @@ client.o: client.cpp
 cmain.o: cmain.cpp
 	$(CC) -c cmain.cpp
 
-
-
-
+argparser_client.o: argparser_client.cpp
+	$(CC) -c argparser_client.cpp
 
 
 run:
-	./ipk-simpleftp-server -i en0 -p 117 -u cesta -f cestam
+	./ipk-simpleftp-server -i en0 -p 5060 -u /Users/andrejhyros/CLionProjects/sftp/userpass.txt -f /Users/andrejhyros/Desktop/tcp
 
 clean:
 	rm -f ipk-simpleftp-server ipk-simpleftp-client *.o
 
-clean_objs:
+clob:
 	rm -f *.o

@@ -1,17 +1,19 @@
 #include <iostream>
 #include <cstring>
 
-#define SFTP_PORT 115
+
+#define SFTP_PORT "115"
 #define PRINT(x) std::cout << x << std::endl
 
 
 class ArgParserServer {
+public:
     bool m_iFlag = false;
     bool m_pFlag = false;
     bool m_uFlag = false;
     bool m_fFlag = false;
-    std::string m_iArg, m_pArg, m_uArg, m_fArg;
-    int m_port = SFTP_PORT;
+    std::string m_iArg, m_uArg, m_fArg, m_pArg = SFTP_PORT;
+    int m_port = 115;
     int m_argc;
     char ** m_argv;
 

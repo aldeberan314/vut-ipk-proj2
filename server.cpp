@@ -4,9 +4,10 @@
 #include "server.h"
 #include "error.h"
 
+#include <net/if.h>
+#include <sys/ioctl.h>
 
-
-sftpServer::sftpServer() {
+sftpServer::sftpServer(ArgParserServer *args) {
     gethostname(m_hostname, MAX_HOSTNAME_LEN);
     memset(&m_hints, 0, sizeof(m_hints));
     memset(&m_buffer, 0, BUFFER_SIZE);
@@ -15,6 +16,8 @@ sftpServer::sftpServer() {
     m_hints.ai_flags = AI_PASSIVE;
     m_wdir = fs::current_path();
     m_stream_type = BINARY;
+    m_args = args;
+    m_port = args->m_pArg;
 }
 
 void *sftpServer::get_in_addr(sockaddr *sa) {
@@ -26,6 +29,8 @@ void *sftpServer::get_in_addr(sockaddr *sa) {
 
 int sftpServer::bind_to(addrinfo *ptr, int& yes, addrinfo *servinfo) {
     int sock = 0;
+
+
     for(ptr = servinfo; ptr != NULL; ptr = ptr->ai_next) {
         sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
         if(sock == -1) {
@@ -42,6 +47,9 @@ int sftpServer::bind_to(addrinfo *ptr, int& yes, addrinfo *servinfo) {
             PRINT("SETSOCKOPT ERROR");
             exit(1);
         }
+        sockaddr_in *test = reinterpret_cast<sockaddr_in*>(ptr);
+        char *ip = inet_ntoa(test->sin_addr);
+        PRINT(ip);
 
         if(bind(sock, ptr->ai_addr, ptr->ai_addrlen) == -1) {
             close(sock);
@@ -60,7 +68,7 @@ void sftpServer::start() {
     socklen_t sin_size = sizeof(sockaddr_storage); // for accept
     addrinfo *servinfo, *p; // pointers to addrinfo
 
-    if(getaddrinfo(NULL, PORT, &m_hints, &servinfo) != 0) {
+    if(getaddrinfo(NULL, m_port.data(), &m_hints, &servinfo) != 0) {
         error_call(CONNECTION_ERROR, "gai_err", 1);
     }
 
@@ -75,6 +83,9 @@ void sftpServer::start() {
     if(listen(sock, BACKLOG) == -1) {
         error_call(CONNECTION_ERROR, "server: listen", errno);
     }
+
+
+
 
     accept_connection(sock);
 }
@@ -273,6 +284,10 @@ void sftpServer::cmd_list() {
             load_buffer("-Folder does not exist, try again...");
             return;
         }
+        if(path.string() == "..") {
+            path = m_wdir / path;
+            get_rid_of_parents(path);
+        }
     }
     reply = "+" + path.string() + ":\n";
     if(verbose) {
@@ -352,7 +367,6 @@ void sftpServer::cmd_name() {
     load_buffer("+File exists");
 }
 
-// TODO vylepsit - rozlisovat medzi file a folder
 void sftpServer::cmd_tobe() {
     if(!is_valid_count(2, "-Invalid query, usage: \"TOBE new-file-spec\"")) return;
     if(!m_NAME) { // po NAME bol zadany iny prikaz
@@ -363,6 +377,10 @@ void sftpServer::cmd_tobe() {
 
     fs::path path_to_file = m_path_to_be_renamed.parent_path();
     PRINT2(m_path_to_be_renamed.string(), new_name.string());
+    if(fs::exists(m_path_to_be_renamed)) {
+        load_buffer("-Failed to rename file, reason: name already taken");
+        return;
+    }
     try {
         fs::rename(m_path_to_be_renamed, path_to_file/new_name);
     }
@@ -379,7 +397,6 @@ void sftpServer::cmd_done() {
 }
 
 void sftpServer::cmd_retr() {
-    PRINT("in cmd_retr");
     if(!is_valid_count(2, "-Invalid query, usage: \"RETR file-spec\"")) return;
     fs::path file(m_tquery[1]);
     if(!fs::exists(file)) {
@@ -403,14 +420,19 @@ void sftpServer::cmd_stop() {
 }
 
 void sftpServer::cmd_send() {
-    send_file(m_retrieved_filename);
-    load_buffer("+File send successfully");
+    if(m_retr_planned) {
+        send_file(m_retrieved_filename);
+        load_buffer("+File send successfully");
+        //m_retr_planned = false;
+        return;
+    }
+    load_buffer("-Send RETR query first");
 }
 
 void sftpServer::cmd_stor() {
     if(!is_valid_count(3, "-Invalid query, usage: \"STOR { NEW | OLD | APP } file-spec\"")) return;
     auto type = m_tquery[1];
-    auto filename = m_tquery[2];
+    auto filename = fs::path(m_tquery[2]).filename().string(); // store only filename, not whole path
     bool exists = fs::exists(fs::path(filename));
     m_stored_filename = filename;
     if(!(type == "NEW" || type == "OLD" || type == "APP")) {
@@ -418,13 +440,15 @@ void sftpServer::cmd_stor() {
         return;
     }
     if (type == "NEW") {
+        m_stor_planned = true;
         if(exists) {
-            load_buffer("-File exists, but system doesn't support generations");
+            std::regex regex("\\.");
+            m_stored_filename = regex_replace(m_stored_filename, regex, "-copy.");
+            load_buffer("+File exists, will create file with name " + m_stored_filename);
             return;
         }
         load_buffer("+File does not exist, will create new file");
         m_stor_planned = true;
-        //todo flag
         return;
     }
     m_stor_planned = true;
@@ -437,11 +461,8 @@ void sftpServer::cmd_stor() {
         return;
     }
     if(type == "APP") {
-        if(exists) {
-            load_buffer("+Will append to new file");
-            return;
-        }
-        load_buffer("+Will create new file");
+        load_buffer("-Appending not supported");
+        m_stor_planned = false;
     }
 }
 
@@ -458,6 +479,7 @@ void sftpServer::cmd_size() {
     m_stored_filesize = atoi(m_tquery[1].data());
     retrieve_file();
     load_buffer("+Saved " + m_stored_filename);
+    m_stor_planned = false;
 }
 
 
@@ -473,14 +495,13 @@ void sftpServer::retrieve_file() {
     ssize_t len;
     FILE *fp;
 
-
-    fp = fopen(m_stored_filename.data(), "wb");
+    std::string path_to_storage = m_args->m_fArg + "/" + m_stored_filename;
+    //fp = fopen(m_stored_filename.data(), "wb");
+    fp = fopen(path_to_storage.data(), "wb");
     if(fp == nullptr) {
         PRINT("Error with opening file");
         exit(0);
     }
-    PRINT("serv: file opened");
-    PRINT2("Bytes left: ", m_stored_filesize);
 
     while(bytes_left) {
         if(bytes_left < BUFFER_SIZE) {
@@ -538,6 +559,9 @@ void sftpServer::check_tobe() {
     if(m_NAME) {
         if(m_tquery.front() != "TOBE") m_NAME = false;
     }
+    if(m_stor_planned) {
+        if(m_tquery.front() != "SIZE") m_stor_planned = false;
+    }
 }
 
 int sftpServer::receive() {
@@ -573,7 +597,7 @@ void sftpServer::load_buffer(std::string msg) {
 bool sftpServer::is_valid_user(std::string token, bool is_password) {
     std::vector <std::string> userpasses; // holds all lines from userpass.txt
     std::vector <std::string> pair; // will hold user and pass of single line
-    bool ok = load_file(userpasses, "userpass.txt"); // load file
+    bool ok = load_file(userpasses, m_args->m_uArg.data()); // load file
     if (!ok) error_call(FILE_IO_ERROR, "Loading userpass.txt failed"); // error
     for (auto userpass: userpasses) { // iterate and find match
         tokenize(userpass, ':', pair);

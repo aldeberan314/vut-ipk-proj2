@@ -2,7 +2,6 @@
 
 
     ArgParserServer::ArgParserServer(int argc, char ** argv) {
-        //LOG("Object created");
         m_argc = argc;
         m_argv = argv;
     }

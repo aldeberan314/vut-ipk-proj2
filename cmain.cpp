@@ -5,6 +5,9 @@
 #include "client.h"
 
 int main(int argc, char *argv[]) {
-    auto client = sftpClient();
+
+    auto parser = ArgParserClient(argc, argv);
+    parser.parse();
+    auto client = sftpClient(&parser);
     client.start();
 }
