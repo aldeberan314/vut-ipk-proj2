@@ -440,7 +440,7 @@ void sftpServer::cmd_stor() {
             load_buffer("+Will write over old file");
             return;
         }
-        load_buffer("-");
+        load_buffer("-File does not exist");
     }
     if(type == "APP") {
         load_buffer("-Appending not supported");
