@@ -48,7 +48,9 @@ class sftpClient/* : private communicant */{
     addrinfo m_hints;
     fs::path m_retr_filename;
     std::string m_send_filename;
+    std::string m_username;
     bool m_done = false;
+    bool m_logged_in = false;
     bool m_send = false;
     bool m_stor_planned = false;
     std::vector<std::string> m_tquery;
@@ -57,7 +59,7 @@ class sftpClient/* : private communicant */{
 public:
     sftpClient(ArgParserClient *args);
 
-    void *get_in_addr(struct sockaddr *sa);
+    static void *get_in_addr(struct sockaddr *sa);
 
     /**
      * starts client
@@ -82,13 +84,13 @@ public:
      * @param sockfd
      * @param filesize
      */
-    void send_file(std::string filename, int sockfd, int filesize);
+    void send_file(std::string filename, int sockfd, int filesize) const;
 
     /**
      * parses users input. Important for checking if users requests are possible
      * @param user_input
      */
-    void parse_user_input(std::string user_input);
+    void parse_user_input(const std::string& user_input);
 };
 
 

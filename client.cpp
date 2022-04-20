@@ -13,7 +13,6 @@ sftpClient::sftpClient(ArgParserClient *args) {
     m_args = args;
 }
 
-
 void *sftpClient::get_in_addr(struct sockaddr *sa) {
     if (sa->sa_family == AF_INET) {
         return &(((struct sockaddr_in *) sa)->sin_addr);
@@ -105,6 +104,9 @@ void sftpClient::start_conversation() {
             filesize = atoi(m_buffer);
         }
 
+        if(std::string(m_buffer) == "!" + m_username + " logged in") {
+            m_logged_in = true;
+        }
 
         // print server msg
         PRINT(m_buffer);
@@ -146,7 +148,7 @@ void sftpClient::retrieve_file(int sockfd, size_t filesize) {
     return;
 }
 
-void sftpClient::send_file(std::string filename, int sockfd, int filesize) {
+void sftpClient::send_file(std::string filename, int sockfd, int filesize) const {
     PRINT2("in send_file, filename: ", filename);
     FILE *fp;
     int n;
@@ -181,7 +183,7 @@ void sftpClient::send_file(std::string filename, int sockfd, int filesize) {
     return;
 }
 
-void sftpClient::parse_user_input(std::string user_input) {
+void sftpClient::parse_user_input(const std::string& user_input) {
     tokenize(user_input, ' ', m_tquery);
     auto cmd = m_tquery.front();
     make_str_upper(cmd);
@@ -194,10 +196,17 @@ void sftpClient::parse_user_input(std::string user_input) {
         m_done = true;
     }
     if(cmd == "STOR") {
-        m_send_filename = m_tquery[2];
-        m_stor_planned = true;
+        if(m_tquery.size() == 3 && m_logged_in) {
+            m_send_filename = m_tquery[2];
+            m_stor_planned = true;
+        }
     }
     if(cmd == "SIZE") {
+    }
+    if(cmd == "USER") {
+        if(m_tquery.size() == 2) {
+            m_username = m_tquery[1];
+        }
     }
 
 
