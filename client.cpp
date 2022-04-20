@@ -29,7 +29,7 @@ void sftpClient::start() {
     gai_r = getaddrinfo(ip, port, &m_hints, &servinfo);
     if(gai_r != 0) error_call(CONNECTION_ERROR, "gai error", errno);
 
-    for(p = servinfo; p != NULL; p = p->ai_next) {
+    for(p = servinfo; p != nullptr; p = p->ai_next) {
         m_socket = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
         if(m_socket == -1) {
             PRINT("socket error, continuing...");
@@ -42,7 +42,7 @@ void sftpClient::start() {
         }
         break;
     }
-    if (p == NULL) error_call(CONNECTION_ERROR, "client: failed to connect, returning", errno);
+    if (p == nullptr) error_call(CONNECTION_ERROR, "client: failed to connect, returning", errno);
 
     inet_ntop(p->ai_family, get_in_addr((sockaddr*)p->ai_addr), m_ipaddr, sizeof m_ipaddr);
     //printf("client: connecting to %s\n", m_ipaddr);

@@ -6,9 +6,6 @@
 #include "server.h"
 
 
-#define SFTP_PORT 115
-namespace fs = std::filesystem;
-
 
 int main(int argc, char ** argv) {
     auto parser = ArgParserServer(argc, argv);

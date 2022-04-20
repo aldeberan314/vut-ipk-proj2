@@ -1,9 +1,4 @@
 //
-// Created by Andrej Hyros on 08/04/2022.
-//
-
-
-//
 // Created by Andrej Hyros on 02/04/2022.
 //
 #include <cstdio>
@@ -33,8 +28,6 @@
 #include "argparser_client.h"
 
 #define BUFFER_SIZE 1024
-#define LOCALHOST "127.0.0.1"
-#define PORT "5060"
 
 namespace fs = std::filesystem;
 
