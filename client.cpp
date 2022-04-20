@@ -118,23 +118,23 @@ void sftpClient::start_conversation() {
 
 void sftpClient::retrieve_file(int sockfd, size_t filesize) {
 
-    char buffer[BUFFER_SIZE];
-    bzero(buffer, BUFFER_SIZE);
-    int remainingData = filesize;
+    char buffer[BUFFER_SIZE]; // buffer for file data
+    bzero(buffer, BUFFER_SIZE); // reset buffer
+    int remainingData = filesize; // obvious
     ssize_t len;
-    FILE *fp;
-    std::string path_to_file = m_args->m_fArg + "/" + m_retr_filename.string();
+    FILE *fp; // file handle
+    std::string path_to_file = m_args->m_fArg + "/" + m_retr_filename.string(); // append filename to path
 
-    fp = fopen(path_to_file.data(), "wb");
+    fp = fopen(path_to_file.data(), "wb"); // open file
     if(fp == nullptr) error_call(FILE_IO_ERROR, "Error occured when opening file");
 
     while(remainingData) {
         if(remainingData < BUFFER_SIZE) {
-            len = recv(m_socket, buffer, remainingData, 0);
-            fwrite(buffer, sizeof(char), len, fp);
+            len = recv(m_socket, buffer, remainingData, 0); // read from socket
+            fwrite(buffer, sizeof(char), len, fp); // write to file
             remainingData -= len;
             //printf("Received %lu bytes, expecting %d bytes\n", len, remainingData);
-            memset(buffer, 0, BUFFER_SIZE);
+            memset(buffer, 0, BUFFER_SIZE); // reset bufer
             break;
         } else {
             len = recv(m_socket, buffer, BUFFER_SIZE, 0); //256
@@ -142,21 +142,19 @@ void sftpClient::retrieve_file(int sockfd, size_t filesize) {
             remainingData -= len;
             //printf("Received %lu bytes, expecting: %d bytes\n", len, remainingData);
         }
-        memset(buffer, 0, BUFFER_SIZE);
+        memset(buffer, 0, BUFFER_SIZE); // reset buffer
     }
     fclose(fp);
-    return;
 }
 
 void sftpClient::send_file(std::string filename, int sockfd, int filesize) const {
-    PRINT2("in send_file, filename: ", filename);
-    FILE *fp;
+    FILE *fp; // file hadnle
     int n;
     int read_bytes;
     int bytes_left = filesize;
 
 
-    fp = fopen(filename.data(), "rb");
+    fp = fopen(filename.data(), "rb"); // open file
     if(fp == nullptr) error_call(FILE_IO_ERROR, "Error occured while opening " + filename);
     PRINT2("cl: file opened", bytes_left);
     char data[BUFFER_SIZE];
@@ -180,32 +178,31 @@ void sftpClient::send_file(std::string filename, int sockfd, int filesize) const
     }
     printf("File sent!\n");
     fclose(fp);
-    return;
 }
 
 void sftpClient::parse_user_input(const std::string& user_input) {
     tokenize(user_input, ' ', m_tquery);
-    auto cmd = m_tquery.front();
-    make_str_upper(cmd);
+    auto cmd = m_tquery.front(); // save command
+    make_str_upper(cmd); // make command uppercase
 
     if(cmd == "RETR") {
-        if(m_tquery.size() > 1)
-        m_retr_filename = fs::path(m_tquery[1].data());
+        if(m_tquery.size() > 1) // correct count of tokens
+        m_retr_filename = fs::path(m_tquery[1].data()); // save filename
     }
     if(cmd == "DONE") {
         m_done = true;
     }
     if(cmd == "STOR") {
         if(m_tquery.size() == 3 && m_logged_in) {
-            m_send_filename = m_tquery[2];
-            m_stor_planned = true;
+            m_send_filename = m_tquery[2]; // save filename
+            m_stor_planned = true; // set state var
         }
     }
     if(cmd == "SIZE") {
     }
     if(cmd == "USER") {
         if(m_tquery.size() == 2) {
-            m_username = m_tquery[1];
+            m_username = m_tquery[1]; // save username
         }
     }
 

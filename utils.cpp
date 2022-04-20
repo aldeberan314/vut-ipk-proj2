@@ -39,36 +39,28 @@ void tokenize(std::string const &str, const char delim, std::vector<std::string>
 }
 
 void get_rid_of_parents(std::filesystem::path &path) {
-    std::regex regex("([^\\/]*\\/\\.\\.)(\\/|$)");
+    std::regex regex("([^\\/]*\\/\\.\\.)(\\/|$)"); // regex for parents, example: folder1/../folder2/..
     path = regex_replace(path.string(), regex, "");
 }
 
 bool load_file(std::vector<std::string> &outvec, std::string fileName) {
-    std::ifstream in(fileName.data());
-    if (!in) { // Check if object is valid
+    std::ifstream in(fileName.data()); // open stream
+    if (!in) { // check if object is valid
         error_call(FILE_IO_ERROR, "\"Cannot open the File : \"" +  fileName);
         return false;
     }
     std::string str;
-    while (std::getline(in, str)) { // Read the next line from File untill it reaches the end.
+    while (std::getline(in, str)) { // read the next line from File untill it reaches the end.
         if (str.size() > 0)
             outvec.push_back(str);
     }
-    in.close();
+    in.close(); // close file
     return true;
 }
-// src: https://en.cppreference.com/w/cpp/filesystem/file_time_type
-/*
-std::string time_to_string(std::filesystem::file_time_type const& ftime) {
-    std::time_t cftime = std::chrono::system_clock::to_time_t(std::chrono::file_clock::to_sys(ftime));
-    return std::asctime(std::localtime(&cftime));
-    std::chrono::
-}
-*/
 
 bool is_number(const std::string& s)
 {
-    std::string::const_iterator it = s.begin();
+    std::string::const_iterator it = s.begin(); // initialize iterator
     while (it != s.end() && std::isdigit(*it)) ++it;
     return !s.empty() && it == s.end();
 }

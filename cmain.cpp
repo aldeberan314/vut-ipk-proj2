@@ -7,7 +7,7 @@
 int main(int argc, char *argv[]) {
 
     auto parser = ArgParserClient(argc, argv);
-    parser.parse();
+    parser.parse(); // parse arguments
     auto client = sftpClient(&parser);
-    client.start();
+    client.start(); // start client
 }

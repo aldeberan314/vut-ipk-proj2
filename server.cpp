@@ -39,12 +39,12 @@ int sftpServer::bind_to(addrinfo *ptr, int& yes, addrinfo *servinfo) {
             continue;
         }
 
-        if(setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(int)) == -1) {
+        if(setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(int)) == -1) {  // make socket reusable
             PRINT2("SETSOCKOPT ERROR", errno);
             exit(1);
         }
 
-        if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+        if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) { // make socket reusable
             PRINT("SETSOCKOPT ERROR");
             exit(1);
         }
@@ -55,7 +55,7 @@ int sftpServer::bind_to(addrinfo *ptr, int& yes, addrinfo *servinfo) {
         char *ip = inet_ntoa(test->sin_addr);
         //PRINT(ip);
 
-        if(bind(sock, ptr->ai_addr, ptr->ai_addrlen) == -1) {
+        if(bind(sock, ptr->ai_addr, ptr->ai_addrlen) == -1) { // bind
             close(sock);
             PRINT2("BIND ERROR: ", errno);
             continue;
@@ -80,7 +80,7 @@ void sftpServer::start() {
     if(!p) {
         error_call(CONNECTION_ERROR, "server:failed to bind", errno);
     }
-    if(listen(m_sock, BACKLOG) == -1) {
+    if(listen(m_sock, BACKLOG) == -1) { // listen
         error_call(CONNECTION_ERROR, "server: listen", errno);
     }
 
@@ -106,12 +106,12 @@ void sftpServer::close_connection() {
 }
 
 void sftpServer::start_conversation() {
-    int numbytes;
-    std::string greeting("+" + std::string(m_hostname) + " SFTP SERVICE");
+    int numbytes; // number of received bytes
+    std::string greeting("+" + std::string(m_hostname) + " SFTP SERVICE"); // greetin message
     PRINT(greeting);
     send(m_socket, greeting.data(), greeting.length(), 0); // send greeting message
 
-    while(true) {
+    while(true) { // communication loop
         numbytes = receive(); // receive answer
         if(!numbytes) { // connection closed by remote peer
             PRINT("Connection closed by remote peer");
@@ -134,7 +134,7 @@ void sftpServer::start_conversation() {
 void sftpServer::parse_query() {
     std::string query(m_buffer);
     memset(m_buffer, 0, BUFFER_SIZE); // clear buffer for reply
-    tokenize(query, ' ', m_tquery);
+    tokenize(query, ' ', m_tquery); // tokenize the query by space
     make_str_upper(m_tquery.front()); // make command uppercase
     check_tobe();
 
@@ -198,7 +198,7 @@ void sftpServer::parse_query() {
 
 void sftpServer::cmd_user() {
     if(!is_valid_count(2)) return;
-    if(m_logged_in) {
+    if(m_logged_in) { // user is logged in
         load_buffer("-Already logged in");
         return;
     }
@@ -220,7 +220,7 @@ void sftpServer::cmd_user() {
 
 void sftpServer::cmd_pass() {
     if(!is_valid_count(2)) return;
-    if(m_logged_in) {
+    if(m_logged_in) { // user is logged in
         load_buffer("-Already logged in");
         return;
     }
@@ -242,7 +242,7 @@ void sftpServer::cmd_pass() {
 
 void sftpServer::cmd_type() {
     if(!is_valid_count(2)) return;
-    if(!is_logged_in()) return;
+    if(!is_logged_in()) return; // user is not logged in
     if(m_tquery[1] == "A") {
         m_stream_type = ASCII;
         load_buffer("+Using Ascii mode");
@@ -262,12 +262,12 @@ void sftpServer::cmd_type() {
 }
 
 void sftpServer::cmd_list() {
-    bool verbose = false;
+    bool verbose = false; // verbose set to false by default
     fs::path path = m_wdir;
     std::string reply;
 
-    if(!is_valid_count(2, 3)) return;
-    if(!is_logged_in()) return;
+    if(!is_valid_count(2, 3)) return; // bad arg count
+    if(!is_logged_in()) return; // user is not logged in
 
     if(m_tquery[1] == "V") verbose = true;
     if(!verbose && m_tquery[1] != "F") { // invalid arg
@@ -285,12 +285,12 @@ void sftpServer::cmd_list() {
             get_rid_of_parents(path);
         }
     }
-    reply = "+" + path.string() + ":\n";
+    reply = "+" + path.string() + ":\n"; // assemble first line of response
 
     for(auto &item : fs::directory_iterator(path)) { // for verbose answer
-        if(verbose) { // todo more info for verbose
+        if(verbose) {
             uint filesize = !fs::is_directory(item.path()) ? fs::file_size(item.path()) : 0; // show filesizes only for files
-            reply += item.path().filename().string() + " | " + (!fs::is_directory(item.path()) ? std::to_string(filesize) + "B " : "" )+ "\n";
+            reply += item.path().filename().string() + " | " + (!fs::is_directory(item.path()) ? std::to_string(filesize) + "B " : "" )+ "\n"; // assebmle response
             continue;
         }
         reply += item.path().filename().string() + "\n";
@@ -300,7 +300,7 @@ void sftpServer::cmd_list() {
 
 void sftpServer::cmd_cdir() {
     if(!is_valid_count(2)) return;
-    if(!is_logged_in()) return;
+    if(!is_logged_in()) return; // user is not logged in
     fs::path path(m_tquery[1]);
 
     if(path.is_relative()) { // user passed relative path
@@ -312,11 +312,11 @@ void sftpServer::cmd_cdir() {
     }
     get_rid_of_parents(path);
     PRINT(path.string());
-    if(!fs::exists(path)) {
+    if(!fs::exists(path)) { // file does not exist
         load_buffer("-Can't connect to directory because: does not exist");
         return;
     }
-    if(!fs::is_directory(path)) {
+    if(!fs::is_directory(path)) { // path leads to folder
         load_buffer("-Can't connect to directory because: is not directory");
         return;
     }
@@ -324,37 +324,36 @@ void sftpServer::cmd_cdir() {
     load_buffer("+Changed directory to " + m_wdir.string());
 }
 
-void sftpServer::cmd_kill() { // TODO otestovat pre neexistujúce súbory
+void sftpServer::cmd_kill() {
     if(!is_valid_count(2)) return;
-    if(!is_logged_in()) return;
+    if(!is_logged_in()) return; // user is not logged in
     fs::path file(m_tquery[1]);
 
-
-        std::error_code ec;
-        if(fs::remove(file, ec)) {
-            load_buffer("+" + file.string() + " deleted");
-            return;
-        } else {
-            load_buffer("-Not deleted - " + ec.message());
-        }
+    std::error_code ec;
+    if(fs::remove(file, ec)) { // deletion succesful
+        load_buffer("+" + file.string() + " deleted");
+        return;
+    } else {
+        load_buffer("-Not deleted - " + ec.message());
+    }
 }
 
 void sftpServer::cmd_name() {
     if(!is_valid_count(2)) return;
-    if(!is_logged_in()) return;
+    if(!is_logged_in()) return; // user is not logged in
     fs::path path(m_tquery[1]);
-    if(!fs::exists(path)) {
+    if(!fs::exists(path)) { // file does not exist
         load_buffer("-Can't find " + path.string());
         return;
     }
     m_path_to_be_renamed = path;
-    m_NAME = true;
+    m_NAME = true; // set state variable
     load_buffer("+File exists");
 }
 
 void sftpServer::cmd_tobe() {
     if(!is_valid_count(2)) return;
-    if(!m_NAME) { // po NAME bol zadany iny prikaz
+    if(!m_NAME) { // NAME wasnt last query
         load_buffer("-Send NAME query first");
         return;
     }
@@ -362,11 +361,11 @@ void sftpServer::cmd_tobe() {
 
     fs::path path_to_file = m_path_to_be_renamed.parent_path();
     PRINT2(m_path_to_be_renamed.string(), new_name.string());
-    if(fs::exists(new_name)) {
+    if(fs::exists(new_name)) { // file exists
         load_buffer("-Failed to rename file, reason: name already taken");
         return;
     }
-    try {
+    try { // try renaming
         fs::rename(m_path_to_be_renamed, path_to_file/new_name);
     }
     catch (...) {
@@ -383,16 +382,16 @@ void sftpServer::cmd_done() {
 
 void sftpServer::cmd_retr() {
     if(!is_valid_count(2)) return;
-    if(!is_logged_in()) return;
+    if(!is_logged_in()) return; // user is not logged in
     fs::path file(m_tquery[1]);
     if(!fs::exists(file)) {
         load_buffer("-File does not exist");
         return;
     }
-    size_t size = fs::file_size(file);
-    m_retr_planned = true;
-    m_retrieved_filename = file.string();
-    m_retrieved_filesize = size;
+    size_t size = fs::file_size(file); // save filesize
+    m_retr_planned = true; // set state var
+    m_retrieved_filename = file.string(); // save filename
+    m_retrieved_filesize = size; // set size
     load_buffer(std::to_string(size));
 }
 
@@ -417,15 +416,15 @@ void sftpServer::cmd_send() {
 
 void sftpServer::cmd_stor() {
     if(!is_valid_count(3)) return;
-    if(!is_logged_in()) return;
+    if(!is_logged_in()) return; // user is not logged in
 
     auto type = m_tquery[1];
     auto filename = fs::path(m_tquery[2]).filename().string(); // store only filename, not whole path
-    bool exists = fs::exists(fs::path(filename));
-    m_stored_filename = filename;
-    m_stor_planned = true;
+    bool exists = fs::exists(fs::path(filename)); // file existis
+    m_stored_filename = filename; // save filenmae
+    m_stor_planned = true; // set state var
 
-    if(!(type == "NEW" || type == "OLD" || type == "APP")) {
+    if(!(type == "NEW" || type == "OLD" || type == "APP")) { // not a valid option
         load_buffer(query_hints[m_tquery.front()]);
     }
     if (type == "NEW") {
@@ -451,18 +450,18 @@ void sftpServer::cmd_stor() {
 
 void sftpServer::cmd_size() {
     if(!is_valid_count(2)) return;
-    if(!m_stor_planned) {
+    if(!m_stor_planned) { // stor is not planned
         load_buffer("-Send STOR query first");
         return;
     }
-    if(!is_number(m_tquery[1])) {
+    if(!is_number(m_tquery[1])) { // filesize arg not valid
         load_buffer("-Not a valid filesize");
         return;
     }
     m_stored_filesize = atoi(m_tquery[1].data());
     retrieve_file();
     load_buffer("+Saved " + m_stored_filename);
-    m_stor_planned = false;
+    m_stor_planned = false; // set state var
 }
 
 
@@ -470,43 +469,43 @@ void sftpServer::cmd_size() {
 
 
 void sftpServer::retrieve_file() {
-    char buffer[BUFFER_SIZE];
-    bzero(buffer, BUFFER_SIZE);
+    char buffer[BUFFER_SIZE]; // buffer for data
+    bzero(buffer, BUFFER_SIZE); // set it to zeros
     int bytes_left = m_stored_filesize;
     ssize_t len;
-    FILE *fp;
+    FILE *fp; // file handle
 
-    std::string path_to_storage = m_args->m_fArg + "/" + m_stored_filename;
+    std::string path_to_storage = m_args->m_fArg + "/" + m_stored_filename; // add slash and filename to path
     //fp = fopen(m_stored_filename.data(), "wb");
     fp = fopen(path_to_storage.data(), "wb");
-    if(fp == nullptr) {
+    if(fp == nullptr) { // opening file was unsuccesful
         error_call(FILE_IO_ERROR, "Error with opening file");
     }
 
     while(bytes_left) {
-        if(bytes_left < BUFFER_SIZE) {
+        if(bytes_left < BUFFER_SIZE) { // left bytes can be fit into single buffer
             len = recv(m_socket, buffer, bytes_left, 0);
             fwrite(buffer, sizeof(char), len, fp);
             bytes_left -= len;
             //printf("Received %lu bytes, expecting %d bytes\n", len, bytes_left);
             memset(buffer, 0, BUFFER_SIZE);
             break;
-        } else {
+        } else { // there are more then BUFFER_SIZE bytes left
             len = recv(m_socket, buffer, BUFFER_SIZE, 0); //256
             fwrite(buffer, sizeof(char), len, fp);
             bytes_left -= len;
             //printf("Received %lu bytes, expecting: %d bytes\n", len, bytes_left);
         }
-        memset(buffer, 0, BUFFER_SIZE);
+        memset(buffer, 0, BUFFER_SIZE); // reset buffer
     }
-    fclose(fp);
+    fclose(fp); // close file
     return;
 }
 
 void sftpServer::send_file(std::string filename) {
-    FILE *fp;
-    int n;
-    int read_bytes;
+    FILE *fp; // file handle
+    int n; // number of bytes sent
+    int read_bytes; // number of bytes read from file
     int bytes_left = m_retrieved_filesize;
 
     fp = fopen(filename.data(), "rb");
@@ -530,38 +529,38 @@ void sftpServer::send_file(std::string filename) {
             //printf("sent %d slab\n", read_bytes);
         }
     }
-    fclose(fp);
+    fclose(fp); // close file
     return;
 }
 
 void sftpServer::check_tobe() {
-    if(m_NAME) {
-        if(m_tquery.front() != "TOBE") m_NAME = false;
+    if(m_NAME) { // NAME was last query
+        if(m_tquery.front() != "TOBE") m_NAME = false; // new query is not TOBE
     }
-    if(m_stor_planned) {
-        if(m_tquery.front() != "SIZE") m_stor_planned = false;
+    if(m_stor_planned) { // stor action is planned
+        if(m_tquery.front() != "SIZE") m_stor_planned = false; // new query is not SIZE
     }
 }
 
 int sftpServer::receive() {
-    int numbytes;
+    int numbytes; // number of bytes read
     memset(m_buffer, 0, BUFFER_SIZE); // clear buffer for query
-    if((numbytes = recv(m_socket, m_buffer, BUFFER_SIZE-1, 0)) == -1) {
+    if((numbytes = recv(m_socket, m_buffer, BUFFER_SIZE-1, 0)) == -1) { // receive query
         error_call(TRANSMISSION_ERROR, "recv error, exiting...");
     }
     return numbytes;
 }
 
 bool sftpServer::is_valid_count(int cnt, int upto) {
-    int len = m_tquery.size();
-    if(upto) {
-        if(len < cnt || len > upto) {
+    int len = m_tquery.size(); // number of tokens
+    if(upto) { // upper boundry was set
+        if(len < cnt || len > upto) { // count is not in interval
             load_buffer(query_hints[m_tquery.front()]);
             return false;
         }
         return true;
     }
-    if(len != cnt) {
+    if(len != cnt) { // not valid count of tokens
         load_buffer(query_hints[m_tquery.front()]);
         return false;
     }

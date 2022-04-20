@@ -59,11 +59,22 @@ class sftpClient/* : private communicant */{
 public:
     sftpClient(ArgParserClient *args);
 
+    /**
+     * FUNKCIA JE PREVZANÁ Z INTERNETU
+     * autor: Brian Hall
+     * licencia: https://creativecommons.org/licenses/by-nc-nd/3.0/
+     * zdroj: https://beej.us/guide/bgnet/html/
+     */
     static void *get_in_addr(struct sockaddr *sa);
 
     /**
      * starts client
-     */
+     *
+    * ČASŤ FUNKCIE PREVZATÝ Z INTERNETU
+    * autor: Brian Hall
+    * licencia: https://creativecommons.org/licenses/by-nc-nd/3.0/
+    * zdroj: https://beej.us/guide/bgnet/html/
+    */
     void start();
 
     /**
