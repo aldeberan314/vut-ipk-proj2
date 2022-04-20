@@ -154,8 +154,6 @@ void sftpClient::send_file(std::string filename, int sockfd, int filesize) {
     int bytes_left = filesize;
 
 
-
-
     fp = fopen(filename.data(), "rb");
     if(fp == nullptr) error_call(FILE_IO_ERROR, "Error occured while opening " + filename);
     PRINT2("cl: file opened", bytes_left);
@@ -186,7 +184,7 @@ void sftpClient::send_file(std::string filename, int sockfd, int filesize) {
 void sftpClient::parse_user_input(std::string user_input) {
     tokenize(user_input, ' ', m_tquery);
     auto cmd = m_tquery.front();
-
+    make_str_upper(cmd);
 
     if(cmd == "RETR") {
         if(m_tquery.size() > 1)

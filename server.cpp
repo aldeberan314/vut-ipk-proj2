@@ -79,7 +79,7 @@ void sftpServer::start() {
     freeaddrinfo(servinfo);
     if(!p) {
         error_call(CONNECTION_ERROR, "server:failed to bind", errno);
-    }P
+    }
     if(listen(m_sock, BACKLOG) == -1) {
         error_call(CONNECTION_ERROR, "server: listen", errno);
     }
@@ -105,7 +105,7 @@ void sftpServer::close_connection() {
     //close(m_socket);
 }
 
-void sftpServer::kstart_conversation() {
+void sftpServer::start_conversation() {
     int numbytes;
     std::string greeting("+" + std::string(m_hostname) + " SFTP SERVICE");
     PRINT(greeting);
