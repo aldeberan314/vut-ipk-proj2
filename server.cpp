@@ -329,11 +329,14 @@ void sftpServer::cmd_kill() { // TODO otestovat pre neexistujúce súbory
     if(!is_logged_in()) return;
     fs::path file(m_tquery[1]);
 
-    if(fs::remove(file)) {
-        load_buffer("+" + file.string() + " deleted");
-        return;
-    }
-    load_buffer("-Not deleted");
+
+        std::error_code ec;
+        if(fs::remove(file, ec)) {
+            load_buffer("+" + file.string() + " deleted");
+            return;
+        } else {
+            load_buffer("-Not deleted - " + ec.message());
+        }
 }
 
 void sftpServer::cmd_name() {
