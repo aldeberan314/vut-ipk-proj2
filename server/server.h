@@ -25,8 +25,8 @@
 #include <filesystem>
 #include <regex>
 
-#include "error.h"
-#include "utils.h"
+#include "../utils/error.h"
+#include "../utils/utils.h"
 #include "argparser.h"
 
 

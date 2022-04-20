@@ -23,8 +23,8 @@
 #include <fstream>
 #include <filesystem>
 
-#include "error.h"
-#include "utils.h"
+#include "../utils/error.h"
+#include "../utils/utils.h"
 #include "argparser_client.h"
 
 #define BUFFER_SIZE 1024

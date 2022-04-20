@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cstring>
 
-#include "error.h"
+#include "../utils/error.h"
 
 /**
  * Clients argument parser

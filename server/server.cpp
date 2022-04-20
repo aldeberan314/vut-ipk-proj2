@@ -2,8 +2,8 @@
 // Created by Andrej Hyros on 02/04/2022.
 //
 #include "server.h"
-#include "error.h"
-#include "hints.h"
+#include "../utils/error.h"
+#include "../utils/hints.h"
 
 #include <net/if.h>
 #include <sys/ioctl.h>

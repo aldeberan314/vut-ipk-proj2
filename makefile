@@ -13,32 +13,32 @@ client: $(C_OBJS)
 server: $(S_OBJS)
 	$(CC) -o $(SERVERNAME) $(S_OBJS)
 
-argparser.o: argparser.cpp
-	$(CC) -c argparser.cpp
+argparser.o: server/argparser.cpp
+	$(CC) -c server/argparser.cpp
 
-server.o: server.cpp
-	$(CC) -c server.cpp
+server.o: server/server.cpp
+	$(CC) -c server/server.cpp
 
-error.o: error.cpp
-	$(CC) -c error.cpp
+error.o: utils/error.cpp
+	$(CC) -c utils/error.cpp
 
-utils.o: utils.cpp
-	$(CC) -c utils.cpp
+utils.o: utils/utils.cpp
+	$(CC) -c utils/utils.cpp
 
-main.o: main.cpp
-	$(CC) -c main.cpp
+main.o: server/main.cpp
+	$(CC) -c server/main.cpp
 
-client.o: client.cpp
-	$(CC) -c client.cpp
+client.o: client/client.cpp
+	$(CC) -c client/client.cpp
 
-cmain.o: cmain.cpp
-	$(CC) -c cmain.cpp
+cmain.o: client/cmain.cpp
+	$(CC) -c client/cmain.cpp
 
-argparser_client.o: argparser_client.cpp
-	$(CC) -c argparser_client.cpp
+argparser_client.o: client/argparser_client.cpp
+	$(CC) -c client/argparser_client.cpp
 
 run:
-	./ipk-simpleftp-server -i en0 -p 5060 -u /Users/andrejhyros/CLionProjects/sftp/userpass.txt -f /Users/andrejhyros/Desktop/tcp
+	./ipk-simpleftp-server -i en0 -p 5060 -u /Users/andrejhyros/CLionProjects/sftp/debug/userpass.txt -f /Users/andrejhyros/Desktop/tcp
 
 runc:
 	./ipk-simpleftp-client -h ::1 -p 5060 -f /Users/andrejhyros/Desktop/tcp

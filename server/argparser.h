@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cstring>
-#include "error.h"
+#include "../utils/error.h"
 
 #define SFTP_PORT "115"
 #define PRINT(x) std::cout << x << std::endl
