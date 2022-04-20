@@ -1,0 +1,3 @@
+mame:heslo
+maxo:krasny
+clovek:pohode
