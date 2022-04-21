@@ -32,7 +32,7 @@ int sftpServer::bind_to(addrinfo *ptr, int& yes, addrinfo *servinfo) {
     int sock = 0;
 
 
-    for(ptr = servinfo; ptr != NULL; ptr = ptr->ai_next) {
+    for(ptr = servinfo; ptr != nullptr; ptr = ptr->ai_next) {
         sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
         if(sock == -1) {
             PRINT("SOCKET ERROR");
@@ -51,7 +51,7 @@ int sftpServer::bind_to(addrinfo *ptr, int& yes, addrinfo *servinfo) {
 
 
 
-        sockaddr_in *test = reinterpret_cast<sockaddr_in*>(ptr);
+        auto *test = reinterpret_cast<sockaddr_in*>(ptr);
         char *ip = inet_ntoa(test->sin_addr);
         //PRINT(ip);
 
@@ -70,7 +70,7 @@ void sftpServer::start() {
     int yes = 1;
     addrinfo *servinfo, *p; // pointers to addrinfo
 
-    if(getaddrinfo(NULL, m_port.data(), &m_hints, &servinfo) != 0) {
+    if(getaddrinfo(nullptr, m_port.data(), &m_hints, &servinfo) != 0) {
         error_call(CONNECTION_ERROR, "gai_err", 1);
     }
 
@@ -100,7 +100,7 @@ void sftpServer::accept_connection() {
     start_conversation();
 }
 
-void sftpServer::close_connection() {
+void sftpServer::close_connection() const {
     shutdown(m_socket, SHUT_RDWR);
     //close(m_socket);
 }
@@ -140,8 +140,6 @@ void sftpServer::parse_query() {
 
     switch (code_string(m_tquery.front())) {
         case USER:
-            cmd_user();
-            break;
         case ACCT:
             cmd_user();
             break;
@@ -360,7 +358,6 @@ void sftpServer::cmd_tobe() {
     fs::path new_name(m_tquery[1]);
 
     fs::path path_to_file = m_path_to_be_renamed.parent_path();
-    PRINT2(m_path_to_be_renamed.string(), new_name.string());
     if(fs::exists(new_name)) { // file exists
         load_buffer("-Failed to rename file, reason: name already taken");
         return;
@@ -499,13 +496,12 @@ void sftpServer::retrieve_file() {
         memset(buffer, 0, BUFFER_SIZE); // reset buffer
     }
     fclose(fp); // close file
-    return;
 }
 
 void sftpServer::send_file(std::string filename) {
     FILE *fp; // file handle
-    int n; // number of bytes sent
-    int read_bytes; // number of bytes read from file
+    ssize_t n; // number of bytes sent
+    size_t read_bytes; // number of bytes read from file
     int bytes_left = m_retrieved_filesize;
 
     fp = fopen(filename.data(), "rb");
@@ -530,7 +526,6 @@ void sftpServer::send_file(std::string filename) {
         }
     }
     fclose(fp); // close file
-    return;
 }
 
 void sftpServer::check_tobe() {

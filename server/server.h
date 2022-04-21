@@ -17,8 +17,8 @@
 
 #include <chrono>
 #include <thread>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
 #include <pcap.h>
 #include <vector>
 #include <fstream>
@@ -33,7 +33,6 @@
 #ifndef SFTP_SERVER_H
 #define SFTP_SERVER_H
 
-#define PORT "5060"
 #define BACKLOG 10
 #define MAX_HOSTNAME_LEN 254
 #define BUFFER_SIZE 1024
@@ -84,14 +83,14 @@ public:
      * licencia: https://creativecommons.org/licenses/by-nc-nd/3.0/
      * zdroj: https://beej.us/guide/bgnet/html/
      */
-    int bind_to(addrinfo *ptr, int &yes,  addrinfo *servinfo);
+    static int bind_to(addrinfo *ptr, int &yes,  addrinfo *servinfo);
     /**
      * FUNKCIA JE PREVZANÁ Z INTERNETU
      * autor: Brian Hall
      * licencia: https://creativecommons.org/licenses/by-nc-nd/3.0/
      * zdroj: https://beej.us/guide/bgnet/html/
      */
-    void *get_in_addr(struct sockaddr *sa);
+    static void *get_in_addr(struct sockaddr *sa);
 
     /**
      * stars servers communication interface
@@ -111,7 +110,7 @@ public:
     /**
      * closes connection to client
      */
-    void close_connection();
+    void close_connection() const;
 
     /**
      * implements infinite while loop for receiving requests and sending responses
