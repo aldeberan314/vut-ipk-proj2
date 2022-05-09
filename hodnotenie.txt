@@ -1,0 +1,16 @@
+Hodnotenie 14,5 / 20
+
+USER 1/1
+STOR 2/2
+RETR 0/2
+LIST 2/2
+CDIR 2/2
+KILL 2/2
+
+IPv6 0/2
+
+dokumentácia: 5.5 / 7
+nedostatky:
+- chábajúce dátumy v bibliografii pri online zdrojoch
+- pretekajúce riadky
+ chýbajúce medzery medzi textom a jeho citáciou (text[1])
